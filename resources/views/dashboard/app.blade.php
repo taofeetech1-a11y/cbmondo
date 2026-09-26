@@ -15,12 +15,11 @@
 
     <meta name="author" content="Taofeeq Olatigbe">
 
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="noindex, nofollow, noarchive">
 
 	<meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="{{ url('/membership') }}">
+
 
     <!-- Favicon -->
     <link rel="shortcut icon"

@@ -1,52 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
 <head>
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>City Boy Movement Ondo State | Join & Register</title>
-
-    <meta name="description"
-        content="Join City Boy Movement Ondo State. Register as a member, get your membership ID, and connect with the City Boy Movement community across Ondo State.">
-
-    <meta name="keywords"
-        content="City Boy Movement, City Boy Movement Ondo State, CBM Ondo, CBM Nigeria, City Boy Ondo, Ondo State movement, City Boy registration, CBM registration">
-
-    <meta name="author" content="Taofeeq Olatigbe">
-
-    <meta name="robots" content="index, follow">
-
-    <!-- Canonical URL -->
-    <link rel="canonical" href="{{ url('/') }}">
-
-    <!-- Favicon -->
-    <link rel="shortcut icon"
-        href="{{ asset('assets/logo-cityboy.png') }}"
-        type="image/x-icon">
-
-    <!-- Open Graph / Facebook / WhatsApp -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="City Boy Movement Ondo State | Join & Register">
-    <meta property="og:description"
-        content="Join City Boy Movement Ondo State. Register as a member and connect with the City Boy Movement community across Ondo State.">
-    <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:site_name" content="City Boy Movement — Ondo State">
-    <meta property="og:image" content="{{ asset('assets/logo-cityboy.png') }}">
-    <meta property="og:image:alt" content="City Boy Movement Ondo State">
-
-    <!-- Twitter / X -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="City Boy Movement Ondo State | Join & Register">
-    <meta name="twitter:description"
-        content="Join City Boy Movement Ondo State. Register as a member and connect with the City Boy Movement community across Ondo State.">
-    <meta name="twitter:image" content="{{ asset('assets/logo-cityboy.png') }}">
-
-    <!-- Styles -->
+    <x-seo page="new.homepage" />
+    <link rel="icon" href="{{ asset('assets/logo-cityboy.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ asset('assets/m.css') }}">
-</head>
 </head>
 
 <body>
@@ -124,7 +83,7 @@
             <div class="form-side">
                 <div class="eyebrow-line"></div>
                 <h2 class="section-title">Register Now</h2>
-                <p class="section-desc">Fill in your details correctly to get your City Boy membership card.</p>
+                <p class="section-desc">Register as a City Boy Movement member in Ondo State, with or without a voter card. Select your local government area and enter your details to receive your CBM membership ID and download your card.</p>
 
                 <div class="gate-block" id="voterGate">
                     <div class="field">
