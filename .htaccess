@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect users to the public directory
+    RewriteRule ^(.*)$ public/$1 [L]
+
+ # Block access to sensitive Laravel core files
+RedirectMatch 404 /\.(env|git|example)$
+RedirectMatch 404 /(composer\.json|composer\.lock|package\.json|artisan)$
+
+</IfModule>
