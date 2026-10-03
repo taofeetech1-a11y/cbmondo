@@ -3,14 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Membership extends Model
 {
     protected $guarded = [];
 
+    public function exco(): HasOne
+    {
+        return $this->hasOne(Exco::class);
+    }
 
-	    public function lgaInfo()
+    public function lgaInfo()
     {
         return $this->belongsTo(Lga::class, 'lga');
     }
@@ -25,12 +30,11 @@ class Membership extends Model
         return $this->belongsTo(PollingUnit::class, 'pu');
     }
 
-
     protected static function booted(): void
     {
         static::creating(function (Membership $guest) {
             do {
-                $passId = 'CBM-ON-' . Str::lower(Str::random(6));
+                $passId = 'CBM-ON-'.Str::lower(Str::random(6));
             } while (static::where('cbm_id', $passId)->exists());
 
             $guest->cbm_id = $passId;

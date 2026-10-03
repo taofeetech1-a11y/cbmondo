@@ -13,5 +13,20 @@ return [
             'title' => 'Support City Boy Movement Ondo State | Partner With Us',
             'description' => 'Support City Boy Movement in Ondo State. Explore opportunities to partner with the movement and contribute to youth engagement and community participation.',
         ],
+        'about.page' => [
+            'path' => '/about',
+            'title' => 'About City Boy Movement Ondo State | CBM Ondo',
+            'description' => 'Learn about the City Boy Movement Ondo State membership portal, registration options, membership identification and ways to contact the team.',
+        ],
+        'contact.page' => [
+            'path' => '/contact',
+            'title' => 'Contact City Boy Movement Ondo State | Membership Help',
+            'description' => 'Contact City Boy Movement Ondo State by phone or email for help with membership registration, ID cards and enquiries about the movement.',
+        ],
+        'updates.page' => [
+            'path' => '/updates',
+            'title' => 'Updates and Registration Information | CBM Ondo',
+            'description' => 'Find membership registration information from City Boy Movement Ondo State, including what to prepare and how to obtain your membership card.',
+        ],
     ],
 ];

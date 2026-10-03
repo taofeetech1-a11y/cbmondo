@@ -33,10 +33,11 @@
                     </div>
                 </div>
 
-                <div class="nav-links">
+                <div class="nav-links" id="homepage-navigation">
                     <a href="#" class="active">Home</a>
-                    <a href="https://cbmnigeria.org/about">About</a>
-                    <a href="#contact">Contact</a>
+                    <a href="{{ route('about.page') }}">About</a>
+                    <a href="{{ route('contact.page') }}">Contact</a>
+                    <a href="{{ route('updates.page') }}">Updates</a>
                     <a href="{{ route('support.page') }}">Support</a>
                     <a href="#reg">Register</a>
                 </div>
@@ -47,7 +48,7 @@
                     <a href="#">Empower</a>
                 </div>
 
-                <button class="nav-toggle" aria-label="Open menu"><span></span><span></span><span></span></button>
+                <button class="nav-toggle" aria-label="Open menu" aria-controls="homepage-navigation" aria-expanded="false"><span></span><span></span><span></span></button>
             </nav>
 
             <div class="hero-inner">
@@ -787,23 +788,7 @@
         //     alert('Form captured — connect this to your Laravel backend endpoint to generate the membership card.');
         // });
 
-        // Mobile nav toggle (simple show/hide of links inline)
-        var toggle = document.querySelector('.nav-toggle');
-        var links = document.querySelector('.nav-links');
-        toggle.addEventListener('click', function() {
-            var isOpen = links.style.display === 'flex';
-            links.style.display = isOpen ? 'none' : 'flex';
-            links.style.flexDirection = 'column';
-            links.style.gap = '12px';
-            links.style.position = 'absolute';
-            links.style.top = '80px';
-            links.style.left = '18px';
-            links.style.background = '#fff';
-            links.style.padding = '16px 20px';
-            links.style.borderRadius = '12px';
-            links.style.boxShadow = '0 10px 30px -10px rgba(0,0,0,0.25)';
-            links.style.zIndex = '20';
-        });
+
     </script>
     <script src="{{ asset('assets/k.js') }}"></script>
 

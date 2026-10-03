@@ -2,12 +2,12 @@
 @section('title', 'Update member — CBM Ondo')
 @section('content')
 <div class="member-layout">
-    <a class="btn btn-outline" href="{{ route('membership.index', $filters) }}">← Back to members</a>
+    <a class="btn btn-outline" href="{{ route($directoryRoute, $filters) }}">← Back to {{ $directoryRoute === 'excos.index' ? 'Excos' : 'members' }}</a>
     <div class="page-head"><div><span class="eyebrow">EDIT MEMBER PROFILE</span><h1>Update {{ $member->name }}</h1><p>CBM ID: {{ $member->cbm_id }}</p></div></div>
     @if ($errors->any())
         <div class="member-notice member-error" role="alert"><strong>Please correct the following:</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
     @endif
-    <form class="panel member-form" method="POST" action="{{ route('membership.update', ['membership' => $member, 'filters' => $filters]) }}" id="member-edit-form">
+    <form class="panel member-form" method="POST" action="{{ route('membership.update', ['membership' => $member, 'filters' => $filters, 'from' => $directoryRoute === 'excos.index' ? 'excos' : null]) }}" id="member-edit-form">
         @csrf
         @method('PATCH')
         <h2 class="member-full">Personal details</h2>
@@ -28,7 +28,7 @@
         @foreach (['support_us' => 'Supports the movement?', 'want_to_be_contacted' => 'Wants to be contacted?', 'same_address' => 'Lives at voter-card location?'] as $field => $label)
             <div class="field"><label for="member-{{ $field }}">{{ $label }}</label><select id="member-{{ $field }}" name="{{ $field }}" required>@foreach (['yes' => 'Yes', 'no' => 'No'] as $value => $text)<option value="{{ $value }}" @selected(old($field, $member->$field) === $value)>{{ $text }}</option>@endforeach</select></div>
         @endforeach
-        <div class="member-form-actions member-full"><a class="btn btn-outline" href="{{ route('membership.index', $filters) }}">Cancel</a><button type="submit" class="btn btn-primary">Save changes</button></div>
+        <div class="member-form-actions member-full"><a class="btn btn-outline" href="{{ route($directoryRoute, $filters) }}">Cancel</a><button type="submit" class="btn btn-primary">Save changes</button></div>
     </form>
 </div>
 @endsection

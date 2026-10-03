@@ -1011,3 +1011,7 @@
                 font-size: 24px;
             }
         }
+
+@media (max-width: 760px) {
+    .nav-links.is-open { display:flex; flex-direction:column; gap:12px; position:absolute; top:80px; left:18px; background:#fff; padding:16px 20px; border-radius:12px; box-shadow:0 10px 30px -10px rgba(0,0,0,.25); z-index:20; }
+}

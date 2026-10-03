@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppController;
+use App\Http\Controllers\ExcoController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\MembershipImportController;
@@ -36,6 +37,10 @@ Route::controller(HomeController::class)->group(function () {
 });
 
 Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
+Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy']);
+Route::view('/about', 'about')->name('about.page');
+Route::view('/contact', 'contact')->name('contact.page');
+Route::view('/updates', 'updates')->name('updates.page');
 Route::get('/membership/import', [MembershipImportController::class, 'index'])->name('membership.import');
 Route::post('/membership/import/preview', [MembershipImportController::class, 'preview'])->name('membership.import.preview');
 Route::post('/membership/import/confirm', [MembershipImportController::class, 'store'])->name('membership.import.store');

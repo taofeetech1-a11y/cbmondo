@@ -9,6 +9,7 @@
     // ];
     $mainNav = [
         ['label' => 'Membership Dashboard', 'route' => 'membership.index', 'icon' => 'grid'],
+        ['label' => 'Excos', 'route' => 'excos.index', 'icon' => 'users'],
         // ['label' => 'All Members',          'route' => 'members.index',    'icon' => 'users'],
         // ['label' => 'Registrations',        'route' => 'registrations.index', 'icon' => 'bars'],
         // ['label' => 'Verification',         'route' => 'verification.index', 'icon' => 'check'],
@@ -34,7 +35,7 @@
     // route() throws if a route name doesn't exist yet -- fall back to '#'
     // so this partial still renders while you're wiring up the other pages.
     $navHref = fn ($name) => \Illuminate\Support\Facades\Route::has($name) ? route($name) : '#';
-    $navActive = fn ($name) => \Illuminate\Support\Facades\Route::has($name) && request()->routeIs($name);
+    $navActive = fn ($name) => \Illuminate\Support\Facades\Route::has($name) && ($name === 'excos.index' ? request()->routeIs('excos.*') || request('from') === 'excos' : request()->routeIs($name));
 @endphp
 
 <aside class="sidebar" id="sidebar">

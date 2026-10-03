@@ -15,6 +15,9 @@ test('public pages have one head and stable metadata without tracking parameters
 })->with([
     ['/', 'City Boy Movement Ondo State | Membership Registration'],
     ['/support', 'Support City Boy Movement Ondo State | Partner With Us'],
+    ['/about', 'About City Boy Movement Ondo State | CBM Ondo'],
+    ['/contact', 'Contact City Boy Movement Ondo State | Membership Help'],
+    ['/updates', 'Updates and Registration Information | CBM Ondo'],
 ]);
 
 test('homepage publishes valid organization and website structured data', function () {
@@ -30,7 +33,7 @@ test('sitemap contains only canonical public pages and robots advertises it', fu
     $response = $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
     $xml = simplexml_load_string($response->getContent());
     $urls = array_map(fn ($entry) => (string) $entry->loc, iterator_to_array($xml->url, false));
-    expect($urls)->toBe(['https://master.cbmondo.org/', 'https://master.cbmondo.org/support']);
+    expect($urls)->toBe(['https://master.cbmondo.org/', 'https://master.cbmondo.org/support', 'https://master.cbmondo.org/about', 'https://master.cbmondo.org/contact', 'https://master.cbmondo.org/updates']);
     $this->get('/robots.txt')->assertOk()->assertSee('Sitemap: https://master.cbmondo.org/sitemap.xml')->assertDontSee('Disallow: /membership');
 });
 
@@ -49,4 +52,11 @@ test('search verification is optional and safely escaped', function () {
     $this->get('/')->assertDontSee('name="google-site-verification"', false);
     config(['seo.verification' => 'verification-token']);
     $this->get('/')->assertSee('name="google-site-verification" content="verification-token"', false);
+});
+
+test('public information pages provide navigation and real contact actions', function () {
+    $this->get('/about')->assertSee(route('contact.page'), false)->assertSee(route('updates.page'), false);
+    $this->get('/contact')->assertSee('href="tel:+2348130930238"', false)->assertSee('href="mailto:info@cbmondo.org"', false)->assertSee('To be added.');
+    $this->get('/updates')->assertSee('Registration: what you need')->assertSee('No activity reports or event announcements have been published');
+    $this->get('/')->assertSee(route('about.page'), false)->assertSee(route('updates.page'), false);
 });

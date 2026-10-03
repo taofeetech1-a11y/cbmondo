@@ -2,10 +2,10 @@
 @section('title', 'Member details — CBM Ondo')
 @section('content')
 <div class="member-layout">
-    <a class="btn btn-outline" href="{{ route('membership.index', $filters) }}">← Back to members</a>
+    <a class="btn btn-outline" href="{{ route($directoryRoute, $filters) }}">← Back to {{ $directoryRoute === 'excos.index' ? 'Excos' : 'members' }}</a>
     <div class="page-head">
         <div><span class="eyebrow">MEMBER PROFILE</span><h1>{{ $member->name }}</h1><p>{{ $member->cbm_id }}</p></div>
-        <a class="btn btn-primary" href="{{ route('membership.edit', ['membership' => $member, 'filters' => $filters]) }}">Update member</a>
+        <a class="btn btn-primary" href="{{ route('membership.edit', ['membership' => $member, 'filters' => $filters, 'from' => $directoryRoute === 'excos.index' ? 'excos' : null]) }}">Update member</a>
     </div>
     <section class="panel member-id-section" aria-labelledby="member-id-title">
         <div class="panel-head"><div><span class="eyebrow">YOUR MEMBERSHIP</span><h2 id="member-id-title">CBM ID card</h2></div>

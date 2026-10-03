@@ -57,23 +57,15 @@ document.querySelectorAll('.toggle-group').forEach(function (group) {
     });
 });
 
-// Mobile nav toggle (simple show/hide of links inline)
+// Keep one navigation handler; CSS controls the mobile layout.
 var toggle = document.querySelector('.nav-toggle');
 var links = document.querySelector('.nav-links');
 toggle.addEventListener('click', function () {
-    var isOpen = links.style.display === 'flex';
-    links.style.display = isOpen ? 'none' : 'flex';
-    links.style.flexDirection = 'column';
-    links.style.gap = '12px';
-    links.style.position = 'absolute';
-    links.style.top = '80px';
-    links.style.left = '18px';
-    links.style.background = '#fff';
-    links.style.padding = '16px 20px';
-    links.style.borderRadius = '12px';
-    links.style.boxShadow = '0 10px 30px -10px rgba(0,0,0,0.25)';
-    links.style.zIndex = '20';
+    var isOpen = links.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
 });
+
 
 
 $('#aLga').on('change', function () {

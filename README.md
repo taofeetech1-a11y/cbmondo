@@ -133,7 +133,7 @@ See [TODO.md](TODO.md) for the detailed checklist and completion history.
 
 ## Search engine optimization
 
-The homepage and support page have page-specific descriptions, canonical URLs and social-sharing metadata. The homepage also publishes Organization and WebSite structured data. The sitemap at /sitemap.xml includes only these public pages.
+The homepage, support, About, Contact and Updates pages have page-specific descriptions, canonical URLs and social-sharing metadata. The homepage also publishes Organization and WebSite structured data. The sitemap at /sitemap.xml includes only these public pages.
 
 Other application routes, including membership records, exports, ID cards, account pages and event registration, return a noindex header. This controls search indexing; it does not restrict access or replace authentication.
 
@@ -145,6 +145,8 @@ After deploying these changes to DirectAdmin:
 4. Run php artisan config:cache, php artisan route:cache and php artisan view:cache in the private application directory. No database migration or new dependency is required for this SEO update.
 5. Check /robots.txt and /sitemap.xml on the live domain, and verify the canonical URL in the homepage source.
 6. Verify ownership in Google Search Console and submit https://master.cbmondo.org/sitemap.xml. For HTML-tag verification, place only the supplied token in GOOGLE_SITE_VERIFICATION in .env and rebuild the configuration cache. DNS verification is also an option.
-7. Request indexing of the homepage and support page using Search Console URL Inspection. Monitor indexing and search performance there.
+7. Request indexing of the homepage, support, About, Contact and Updates pages using Search Console URL Inspection. Monitor indexing and search performance there.
 
 Noindex removal from search results takes recrawling; previously indexed membership URLs may also need Search Console removal requests. Keep those URLs crawlable so Google can read their noindex headers. Search placement and indexing are determined by Google, not guaranteed by these settings.
+
+Public content pages are in resources/views/about.blade.php, contact.blade.php and updates.blade.php, using the shared public-page component and public/css/public-pages.css. Replace the clearly marked office-address and social-profile placeholders on the Contact page when confirmed. The Updates page currently contains registration guidance; add verified activity reports when available.

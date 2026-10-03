@@ -64,13 +64,14 @@ class MembershipController extends Controller
     {
         $membership->load(['lgaInfo', 'wardInfo', 'puInfo']);
 
-        return view('dashboard.members.show', ['member' => $membership, 'filters' => $this->dashboardFilters($request)]);
+        return view('dashboard.members.show', ['member' => $membership, 'filters' => $this->dashboardFilters($request), 'directoryRoute' => $this->directoryRoute($request)]);
     }
 
     public function edit(Request $request, Membership $membership): View
     {
         return view('dashboard.members.edit', [
             'member' => $membership,
+            'directoryRoute' => $this->directoryRoute($request),
             'filters' => $this->dashboardFilters($request),
             'lgas' => Lga::orderBy('name')->get(),
             'wards' => Ward::where('lga_id', old('lga', $membership->lga))->orderBy('name')->get(),
@@ -96,7 +97,12 @@ class MembershipController extends Controller
             $member->update($data);
         });
 
-        return redirect()->route('membership.index', $this->dashboardFilters($request))->with('status', 'Member updated successfully.');
+        return redirect()->route($this->directoryRoute($request), $this->dashboardFilters($request))->with('status', 'Member updated successfully.');
+    }
+
+    private function directoryRoute(Request $request): string
+    {
+        return $request->query('from') === 'excos' ? 'excos.index' : 'membership.index';
     }
 
     /** @return array<string, string> */
@@ -105,7 +111,7 @@ class MembershipController extends Controller
         $filters = $request->query('filters', []);
 
         return is_array($filters)
-            ? array_filter(array_intersect_key($filters, array_flip(['lga', 'ward', 'pu', 'has_voters_card', 'q', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'page'])), 'is_string')
+            ? array_filter(array_intersect_key($filters, array_flip(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'q', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'page'])), 'is_string')
             : [];
     }
 
@@ -119,9 +125,11 @@ class MembershipController extends Controller
     /** @return Builder<Membership> */
     private function filteredMembers(Request $request): Builder
     {
+        $request->validate(['gender' => ['nullable', 'string', 'in:male,female']]);
         [$dateStart, $dateEnd] = MembershipDates::range($request);
 
         return Membership::query()
+            ->when($request->filled('gender'), fn ($query) => $query->where('gender', $request->input('gender')))
             ->when($dateStart, fn ($query) => $query->where('created_at', '>=', $dateStart))
             ->when($dateEnd, fn ($query) => $query->where('created_at', '<', $dateEnd))
             ->when($request->filled('lga'), fn ($q) => $q->where('lga', $request->lga))
@@ -214,6 +222,7 @@ class MembershipController extends Controller
             $request->filled('ward') ? 'Ward: '.($wards->firstWhere('id', $request->ward)?->name ?? $request->ward) : null,
             $request->filled('pu') ? 'Polling unit: '.($pollingUnits->firstWhere('id', $request->pu)?->name ?? $request->pu) : null,
             $request->filled('has_voters_card') ? ($request->has_voters_card === 'yes' ? 'With voter cards' : 'Without voter cards') : null,
+            $request->filled('gender') ? 'Gender: '.ucfirst($request->input('gender')) : null,
             $request->filled('q') ? 'Search: '.$request->q : null,
         ]));
 
@@ -223,6 +232,7 @@ class MembershipController extends Controller
             'ward' => 'Ward: '.($wards->firstWhere('id', $request->ward)?->name ?? $request->ward),
             'pu' => 'Polling unit: '.($pollingUnits->firstWhere('id', $request->pu)?->name ?? $request->pu),
             'has_voters_card' => $request->has_voters_card === 'yes' ? 'With voter cards' : 'Without voter cards',
+            'gender' => 'Gender: '.ucfirst($request->input('gender') ?? ''),
             'q' => 'Search: '.$request->q,
             'period' => 'Dates: '.$dateScope,
         ];

@@ -1,14 +1,14 @@
 <header class="topbar">
     <button class="hamburger" id="hamburger" aria-label="Open menu"><span></span></button>
 
-    <form class="search-box" action="{{ route('membership.index') }}" method="GET">
-        @foreach (['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page'] as $filter)
+    <form class="search-box" action="{{ route(request()->routeIs('excos.*') ? 'excos.index' : 'membership.index') }}" method="GET">
+        @foreach (['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page'] as $filter)
             @if (request()->filled($filter))
                 <input type="hidden" name="{{ $filter }}" value="{{ request($filter) }}">
             @endif
         @endforeach
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" name="q" aria-label="Search members by name, phone or ID" value="{{ request('q') }}" placeholder="Search members by name, phone or ID..." />
+        <input type="text" name="q" aria-label="{{ request()->routeIs('excos.*') ? 'Search Excos by name or ID' : 'Search members by name, phone or ID' }}" value="{{ request('q') }}" placeholder="{{ request()->routeIs('excos.*') ? 'Search Excos by name or ID...' : 'Search members by name, phone or ID...' }}" />
     </form>
 
     <div class="topbar-right">

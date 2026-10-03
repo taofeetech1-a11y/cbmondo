@@ -77,6 +77,14 @@
             </select>
         </div>
         <div class="field">
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender" onchange="this.form.submit()">
+                <option value="">All genders</option>
+                <option value="male" @selected(request('gender') === 'male')>Male</option>
+                <option value="female" @selected(request('gender') === 'female')>Female</option>
+            </select>
+        </div>
+        <div class="field">
             <label for="has_voters_card">Voter's Card</label>
             <select id="has_voters_card" name="has_voters_card" onchange="this.form.submit()">
                 <option value="">All Members</option>
@@ -118,13 +126,13 @@
                 <div id="member-export-menu" class="member-actions-menu" popover>
                     <div class="member-actions-title">All {{ number_format($members->total()) }} matching members</div>
                     @foreach (['xlsx' => 'Excel (.xlsx)', 'csv' => 'CSV (.csv)', 'json' => 'JSON (.json)', 'sql' => 'MySQL (.sql)'] as $type => $label)
-                        <a href="{{ route('membership.export', ['type' => $type, ...request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q'])]) }}">{{ $label }} <span aria-hidden="true">↓</span></a>
+                        <a href="{{ route('membership.export', ['type' => $type, ...request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q'])]) }}">{{ $label }} <span aria-hidden="true">↓</span></a>
                     @endforeach
                 </div>
             </div>
         </div>
 
-        <form id="bulk-card-form" method="POST" action="{{ route('membership.cards.download', request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'q', 'sort', 'direction'])) }}" class="bulk-card-controls" data-selection-key="{{ json_encode(request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'q'])) }}">
+        <form id="bulk-card-form" method="POST" action="{{ route('membership.cards.download', request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'q', 'sort', 'direction'])) }}" class="bulk-card-controls" data-selection-key="{{ json_encode(request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'q'])) }}">
             @csrf
             <div><strong>Download ID cards</strong><p id="card-selection-count" aria-live="polite">0 members selected</p></div>
             <label>Members <select name="scope" id="card-scope"><option value="selected">Selected members</option><option value="filtered">All {{ number_format($members->total()) }} matching members</option></select></label>
@@ -137,7 +145,7 @@
         <div class="card-selection-controls"><label><input type="checkbox" id="select-page-cards"> Select this page</label><button type="button" id="clear-card-selection" class="btn btn-outline">Clear selection</button></div>
         <div class="directory-controls">
             <form method="GET" action="{{ route('membership.index') }}" class="directory-settings">
-                @foreach (request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'q']) as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
+                @foreach (request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'q']) as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
                 <label>Sort by <select name="sort">@foreach (\App\Support\MembershipTable::SORTS as $key => $label)<option value="{{ $key }}" @selected((request('sort') ?: 'created_at') === $key)>{{ $label }}</option>@endforeach</select></label>
                 <label>Order <select name="direction"><option value="desc" @selected(request('direction', 'desc') === 'desc')>Descending</option><option value="asc" @selected(request('direction') === 'asc')>Ascending</option></select></label>
                 <label>Rows per page <select name="per_page">@foreach ([10, 25, 50, 100] as $size)<option value="{{ $size }}" @selected((request('per_page') ?: 10) == $size)>{{ $size }}</option>@endforeach</select></label>
@@ -203,8 +211,8 @@
                                     aria-label="Actions for {{ $member->name }}" data-member-actions><span aria-hidden="true">•••</span></button>
                                 <div id="member-actions-{{ $member->id }}" class="member-actions-menu" popover>
                                     <div class="member-actions-title">{{ $member->name }}</div>
-                                    <a href="{{ route('membership.show', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">View <span aria-hidden="true">↗</span></a>
-                                    <a href="{{ route('membership.edit', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">Update <span aria-hidden="true">✎</span></a>
+                                    <a href="{{ route('membership.show', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">View <span aria-hidden="true">↗</span></a>
+                                    <a href="{{ route('membership.edit', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">Update <span aria-hidden="true">✎</span></a>
                                 </div>
                             </td>
                         </tr>

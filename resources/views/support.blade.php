@@ -1058,6 +1058,12 @@
             </div>
         </div>
 
+        <nav aria-label="Main navigation" style="display:flex;flex-wrap:wrap;gap:16px;padding:12px 0">
+            <a href="{{ route('new.homepage') }}">Home</a>
+            <a href="{{ route('about.page') }}">About</a>
+            <a href="{{ route('updates.page') }}">Updates</a>
+            <a href="{{ route('contact.page') }}">Contact</a>
+        </nav>
     </header>
 
     <section class="hero">
