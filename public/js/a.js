@@ -14,16 +14,24 @@ const hamburger = document.getElementById('hamburger');
 const sidebarClose = document.getElementById('sidebarClose');
 
 function openSidebar() {
+  hamburger?.setAttribute('aria-expanded', 'true');
   sidebar?.classList.add('open');
   backdrop?.classList.add('show');
 }
 function closeSidebar() {
+  hamburger?.setAttribute('aria-expanded', 'false');
   sidebar?.classList.remove('open');
   backdrop?.classList.remove('show');
 }
 hamburger?.addEventListener('click', openSidebar);
 sidebarClose?.addEventListener('click', closeSidebar);
 backdrop?.addEventListener('click', closeSidebar);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && sidebar?.classList.contains('open')) {
+    closeSidebar();
+    hamburger?.focus();
+  }
+});
 
 // ---- Charts ----
 // window.dashboardData is set by an inline @push('scripts') block in
