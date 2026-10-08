@@ -3,6 +3,18 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
+test('super admins can open staff accounts including users without an assigned role', function () {
+    $super = User::factory()->superAdmin()->create();
+    $legacy = User::factory()->create(['role' => null, 'is_active' => false]);
+
+    $this->actingAs($super)->get(route('staff-users.index'))
+        ->assertOk()
+        ->assertSee('Create staff account')
+        ->assertSee($legacy->email)
+        ->assertSee('Choose role')
+        ->assertSee('Save access');
+});
+
 test('super admins can create staff accounts and change their access', function () {
     $super = User::factory()->superAdmin()->create();
     $this->actingAs($super)->post(route('staff-users.store'), ['name' => 'Staff Person', 'email' => 'staff@example.com', 'role' => 'admin', 'password' => 'long-secure-password', 'password_confirmation' => 'long-secure-password'])->assertSessionHasNoErrors()->assertRedirect(route('staff-users.index'));
