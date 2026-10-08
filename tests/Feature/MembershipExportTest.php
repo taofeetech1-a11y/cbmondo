@@ -1,6 +1,11 @@
 <?php
 
+use App\Models\User;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('exports include all matching members beyond pagination', function (string $type) {
     $members = MembershipFactory::new()->count(12)->create(['lga' => '1', 'ward' => '11', 'pu' => '111', 'name' => 'Selected member']);

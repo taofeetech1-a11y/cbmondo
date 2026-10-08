@@ -28,7 +28,7 @@
     <section class="panel breakdown-panel">
         <div class="panel-head">
             <div><span class="eyebrow">GEOGRAPHIC OVERVIEW</span><h3>Registrations by {{ $breakdownLabel }}</h3></div>
-            <button type="button" id="export-chart" class="btn btn-outline" disabled>Download PNG ↓</button>
+            @can('export-data')<button type="button" id="export-chart" class="btn btn-outline" disabled>Download PNG ↓</button>@endcan
         </div>
         <p class="panel-description">Registrations matching all current filters and search.</p>
         @if ($breakdown->isEmpty())

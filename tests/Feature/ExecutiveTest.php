@@ -4,8 +4,13 @@ use App\Models\ExecutiveAssignment;
 use App\Models\ExecutivePosition;
 use App\Models\Membership;
 use App\Models\PollingUnit;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
 use Illuminate\Database\UniqueConstraintViolationException;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 function executivePositionAt(string $level, PollingUnit $unit, string $name = 'Chairperson'): ExecutivePosition
 {

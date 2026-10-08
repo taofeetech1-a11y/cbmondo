@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Database\Factories\MembershipFactory;
 
 beforeEach(function () {
@@ -38,6 +39,7 @@ test('sitemap contains only canonical public pages and robots advertises it', fu
 });
 
 test('member records and downloadable files are excluded from indexing', function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
     $member = MembershipFactory::new()->create();
     foreach (['/membership', '/membership/'.$member->id, '/membership/'.$member->id.'/card', '/membership/export/csv', '/membership/import'] as $path) {
         $this->get($path)->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
@@ -46,7 +48,7 @@ test('member records and downloadable files are excluded from indexing', functio
 
 test('utility and event pages are excluded from indexing', function (string $path) {
     $this->get($path)->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
-})->with(['/login', '/register', '/event', '/up']);
+})->with(['/login', '/event', '/up']);
 
 test('search verification is optional and safely escaped', function () {
     $this->get('/')->assertDontSee('name="google-site-verification"', false);

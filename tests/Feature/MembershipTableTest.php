@@ -1,6 +1,11 @@
 <?php
 
+use App\Models\User;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('table sorts the complete selection with stable pagination and exports', function (string $direction, array $names) {
     foreach (['Charlie', 'Alpha', 'Bravo'] as $name) {

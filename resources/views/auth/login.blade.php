@@ -1,47 +1,5 @@
-<x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
-
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
-
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Staff login — CBM Ondo</title><link rel="stylesheet" href="{{ asset('css/m.css') }}"><link rel="stylesheet" href="{{ asset('css/dashboard-refresh.css') }}"><style>body{display:grid;place-items:center;min-height:100vh;padding:24px}.staff-login{width:100%;max-width:460px}.staff-login form{display:grid;gap:18px}.staff-login .field input{width:100%;padding:12px;border:1px solid #d9e4de;border-radius:10px;font:inherit}.staff-login h1{margin:12px 0}.staff-login p{margin-bottom:18px}.staff-login img{width:64px;height:64px}.staff-login label{font-size:14px}</style></head><body><main class="panel staff-login"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><h1>Staff sign in</h1><p>Sign in to manage membership and executive appointments.</p>
+@if(session('status'))<div class="member-notice" role="status">{{ session('status') }}</div>@endif
+@if($errors->any())<div class="member-notice member-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+<form method="POST" action="{{ route('login') }}">@csrf<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required autofocus></div><div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div><label><input type="checkbox" name="remember" value="1"> Remember me</label><button class="btn btn-primary" type="submit">Sign in</button><a href="{{ route('password.request') }}">Forgot your password?</a><a href="{{ route('new.homepage') }}">Back to website</a></form></main></body></html>

@@ -1,7 +1,12 @@
 <?php
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('date presets filter KPIs charts table and exports identically', function (array $filters, int $expected) {
     CarbonImmutable::setTestNow('2026-09-25 12:00:00');

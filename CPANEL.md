@@ -1,6 +1,6 @@
 # Deploy CBM Ondo to cPanel
 
-This package prepares the application for hosting. It does not publish it, transfer the member database, add authentication, or configure scheduled backups.
+This package prepares the application for hosting. It does not publish it, transfer the member database, or configure scheduled backups. See README.md for staff authentication setup.
 
 ## Requirements
 
@@ -111,7 +111,7 @@ No scheduled application tasks currently require cron. Add scheduler/worker conf
 - Test a card PNG, small ZIP/PDF batch, Excel export and import PREVIEW without saving fake records.
 - Confirm /.env, /composer.json, /storage/logs/laravel.log and /vendor/autoload.php are not served.
 - Inspect storage/logs privately on failure; do not enable public debug output.
-- Authentication remains deferred at your request. Membership viewing, editing, exports and imports retain their current public access.
+- Dashboard access requires an active staff account. After migrating, run `php artisan staff:create-super-admin` interactively to create the first super admin. See README.md for role permissions.
 
 ## Updates and recovery
 

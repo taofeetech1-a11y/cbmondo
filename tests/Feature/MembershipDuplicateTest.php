@@ -2,6 +2,7 @@
 
 use App\Models\Membership;
 use App\Models\PollingUnit;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
 
 function duplicateRegistrationPayload(PollingUnit $unit): array
@@ -47,6 +48,7 @@ test('editing normalizes own contact values without flagging itself', function (
     $unit = PollingUnit::factory()->create();
     $member = MembershipFactory::new()->create(['lga' => $unit->ward->lga_id, 'phone' => '+2348031234567', 'email' => 'Member@Example.COM']);
 
+    $this->actingAs(User::factory()->superAdmin()->create());
     $this->patch(route('membership.update', $member), ['name' => $member->name, 'phone' => '0803-123-4567', 'email' => ' MEMBER@example.com ', 'gender' => 'female', 'age_range' => '25-34', 'has_voters_card' => 'no', 'lga' => $member->lga, 'support_us' => 'yes', 'want_to_be_contacted' => 'yes'])->assertSessionHasNoErrors();
 
     $this->assertDatabaseHas('memberships', ['id' => $member->id, 'phone' => '08031234567', 'email' => 'member@example.com']);
@@ -57,6 +59,7 @@ test('editing cannot claim another members equivalent contacts', function () {
     $member = MembershipFactory::new()->create(['lga' => $unit->ward->lga_id]);
     $other = MembershipFactory::new()->create(['phone' => '+2348031234567', 'email' => 'Other@Example.COM']);
 
+    $this->actingAs(User::factory()->superAdmin()->create());
     $this->patch(route('membership.update', $member), ['name' => 'Changed', 'phone' => '08031234567', 'email' => ' other@example.com ', 'gender' => 'female', 'age_range' => '25-34', 'has_voters_card' => 'no', 'lga' => $member->lga, 'support_us' => 'yes', 'want_to_be_contacted' => 'yes', 'id' => $other->id])->assertSessionHasErrors(['phone', 'email']);
 
     $this->assertDatabaseHas('memberships', ['id' => $member->id, 'phone' => $member->phone, 'name' => $member->name]);

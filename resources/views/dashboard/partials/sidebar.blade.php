@@ -81,6 +81,9 @@
                 Logout
             </button>
         </form> --}}
+        @can('manage-users')<a class="nav-item" href="{{ route('staff-users.index') }}">Staff accounts</a>@endcan
+        <a class="nav-item" href="{{ route('profile.edit') }}">My account</a>
+        <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-item" style="width:100%;border:0;background:none;text-align:left;cursor:pointer">Log out</button></form>
     </nav>
 
     <div class="sidebar-foot">CBM Ondo Admin Portal<br>v1.0 &middot; Ondo State</div>

@@ -99,8 +99,8 @@
                                 <div class="exco-actions">
                                     <a class="btn btn-outline"
                                         href="{{ route('membership.show', ['membership' => $member, 'from' => 'excos', 'filters' => $filters]) }}">View</a>
-                                    <a class="btn btn-outline"
-                                        href="{{ route('membership.edit', ['membership' => $member, 'from' => 'excos', 'filters' => $filters]) }}">Edit</a>
+                                    @can('update-members')<a class="btn btn-outline"
+                                        href="{{ route('membership.edit', ['membership' => $member, 'from' => 'excos', 'filters' => $filters]) }}">Edit</a>@endcan
                                     <form method="POST" action="{{ route('excos.destroy', $member->id) }}"
                                         onsubmit="return confirm('Remove this member from Excos? Their membership will be kept.')">
                                         @csrf @method('DELETE')<button class="btn btn-outline" type="submit"

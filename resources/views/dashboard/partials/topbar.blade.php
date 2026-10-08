@@ -27,7 +27,7 @@
             <div class="avatar">{{ \Illuminate\Support\Str::of(auth()->user()->name ?? 'Admin User')->explode(' ')->map(fn ($n) => $n[0] ?? '')->take(2)->implode('') }}</div>
             <div class="profile-text">
                 <b>{{ auth()->user()->name ?? 'Admin User' }}</b>
-                <span>{{ auth()->user()->role ?? 'State Admin' }}</span>
+                <span>{{ \App\Models\User::ROLES[auth()->user()->role] ?? 'Staff' }}</span>
             </div>
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </div>

@@ -1,7 +1,12 @@
 <?php
 
+use App\Models\User;
 use Database\Factories\MembershipFactory;
 use Illuminate\Pagination\LengthAwarePaginator;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('membership KPIs reflect the complete filtered selection', function (array $filters, int $total, int $withoutCard, int $percentage) {
     MembershipFactory::new()->count(6)->sequence(

@@ -1,7 +1,12 @@
 <?php
 
 use App\Models\Lga;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('gender filters synchronize members KPIs charts and exports', function (string $gender, int $count, int $withoutCard) {
     $lga = Lga::factory()->create();

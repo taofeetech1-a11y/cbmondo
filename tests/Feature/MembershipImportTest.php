@@ -2,6 +2,7 @@
 
 use App\Models\Membership;
 use App\Models\PollingUnit;
+use App\Models\User;
 use App\Support\MembershipImport;
 use Database\Factories\MembershipFactory;
 use Illuminate\Http\UploadedFile;
@@ -9,6 +10,10 @@ use Illuminate\Support\Facades\Cache;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 function importRow(PollingUnit $unit, array $changes = []): array
 {

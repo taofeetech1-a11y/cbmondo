@@ -14,7 +14,7 @@
 
     @include('dashboard.partials.overview')
     <section class="panel trend-panel">
-        <div class="panel-head"><div><span class="eyebrow">REGISTRATION ACTIVITY</span><h3>Registration trends</h3></div><button type="button" class="btn btn-outline" id="export-trend" disabled>Download trend PNG ↓</button></div>
+        <div class="panel-head"><div><span class="eyebrow">REGISTRATION ACTIVITY</span><h3>Registration trends</h3></div>@can('export-data')<button type="button" class="btn btn-outline" id="export-trend" disabled>Download trend PNG ↓</button>@endcan</div>
         <p class="panel-description">{{ $dateScope }} · {{ config('app.timezone') }} · {{ ucfirst($trendData['interval']) }} totals for current filters and search. Ranges over 366 days use monthly totals.</p>
         @if (count($trendData['labels']))
             <div style="height:300px;position:relative"><canvas id="trendChart" role="img" aria-label="{{ ucfirst($trendData['interval']) }} registration counts"></canvas></div>
@@ -121,18 +121,18 @@
                 <div class="sub">{{ number_format($members->total()) }} matching records · Scroll across to view all details</div>
             </div>
             <div class="table-actions">
-                <a class="btn btn-outline" href="{{ route('membership.import') }}">Import members ↑</a>
-                <button type="button" class="btn btn-primary" popovertarget="member-export-menu" data-member-actions>Export members <span aria-hidden="true">↓</span></button>
+                @can('import-members')<a class="btn btn-outline" href="{{ route('membership.import') }}">Import members ↑</a>@endcan
+                @can('export-data')<button type="button" class="btn btn-primary" popovertarget="member-export-menu" data-member-actions>Export members <span aria-hidden="true">↓</span></button>
                 <div id="member-export-menu" class="member-actions-menu" popover>
                     <div class="member-actions-title">All {{ number_format($members->total()) }} matching members</div>
                     @foreach (['xlsx' => 'Excel (.xlsx)', 'csv' => 'CSV (.csv)', 'json' => 'JSON (.json)', 'sql' => 'MySQL (.sql)'] as $type => $label)
                         <a href="{{ route('membership.export', ['type' => $type, ...request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q'])]) }}">{{ $label }} <span aria-hidden="true">↓</span></a>
                     @endforeach
-                </div>
+                </div>@endcan
             </div>
         </div>
 
-        <form id="bulk-card-form" method="POST" action="{{ route('membership.cards.download', request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'q', 'sort', 'direction'])) }}" class="bulk-card-controls" data-selection-key="{{ json_encode(request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'q'])) }}">
+        @can('download-cards')<form id="bulk-card-form" method="POST" action="{{ route('membership.cards.download', request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'q', 'sort', 'direction'])) }}" class="bulk-card-controls" data-selection-key="{{ json_encode(request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'q'])) }}">
             @csrf
             <div><strong>Download ID cards</strong><p id="card-selection-count" aria-live="polite">0 members selected</p></div>
             <label>Members <select name="scope" id="card-scope"><option value="selected">Selected members</option><option value="filtered">All {{ number_format($members->total()) }} matching members</option></select></label>
@@ -142,7 +142,7 @@
             <div id="card-download-message" class="bulk-card-help" role="status"></div>
             <div id="offpage-card-selection"></div>
         </form>
-        <div class="card-selection-controls"><label><input type="checkbox" id="select-page-cards"> Select this page</label><button type="button" id="clear-card-selection" class="btn btn-outline">Clear selection</button></div>
+        <div class="card-selection-controls"><label><input type="checkbox" id="select-page-cards"> Select this page</label><button type="button" id="clear-card-selection" class="btn btn-outline">Clear selection</button></div>@endcan
         <div class="directory-controls">
             <form method="GET" action="{{ route('membership.index') }}" class="directory-settings">
                 @foreach (request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'q']) as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
@@ -188,7 +188,7 @@
                         <tr>
                             <td>{{ $loop->iteration + ($members->currentPage() - 1) * $members->perPage() }}</td>
                             <td>{{ $member->cbm_id }}</td>
-                            <td><label class="card-member-select"><input type="checkbox" name="ids[]" value="{{ $member->id }}" form="bulk-card-form" data-card-member aria-label="Select {{ $member->name }} for ID cards"> {{ $member->name }}</label></td>
+                            <td><label class="card-member-select">@can('download-cards')<input type="checkbox" name="ids[]" value="{{ $member->id }}" form="bulk-card-form" data-card-member aria-label="Select {{ $member->name }} for ID cards">@endcan {{ $member->name }}</label></td>
                             <td>{{ $member->delimitation_code ?? '———' }}</td>
                             <td>{{ $member->cbm_delimitation_code ?? '———' }}</td>
                             <td>{{ $member->phone }}</td>
@@ -212,7 +212,7 @@
                                 <div id="member-actions-{{ $member->id }}" class="member-actions-menu" popover>
                                     <div class="member-actions-title">{{ $member->name }}</div>
                                     <a href="{{ route('membership.show', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">View <span aria-hidden="true">↗</span></a>
-                                    <a href="{{ route('membership.edit', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">Update <span aria-hidden="true">✎</span></a>
+                                    @can('update-members')<a href="{{ route('membership.edit', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">Update <span aria-hidden="true">✎</span></a>@endcan
                                 </div>
                             </td>
                         </tr>
@@ -299,8 +299,8 @@
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { ticks: { maxTicksLimit: 12 } } } },
             });
             const trendButton = document.getElementById('export-trend');
-            trendButton.disabled = false;
-            trendButton.addEventListener('click', () => {
+            if (trendButton) trendButton.disabled = false;
+            trendButton?.addEventListener('click', () => {
                 const canvas = document.createElement('canvas');
                 canvas.width = 1400; canvas.height = 650 + {{ count($chartScope) * 24 }};
                 const chart = new Chart(canvas, {
@@ -367,8 +367,8 @@
                 },
             });
             const exportChartButton = document.getElementById('export-chart');
-            exportChartButton.disabled = false;
-            exportChartButton.addEventListener('click', () => {
+            if (exportChartButton) exportChartButton.disabled = false;
+            exportChartButton?.addEventListener('click', () => {
                 const canvas = document.createElement('canvas');
                 canvas.width = 1400;
                 canvas.height = Math.max(500, breakdownChart.data.labels.length * 42 + 160 + {{ count($chartScope) * 24 }});

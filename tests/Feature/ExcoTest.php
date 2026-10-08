@@ -3,7 +3,12 @@
 use App\Models\Exco;
 use App\Models\Lga;
 use App\Models\PollingUnit;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('excos dashboard includes only linked members and applies location and gender filters', function (string $field) {
     $unit = PollingUnit::factory()->create();

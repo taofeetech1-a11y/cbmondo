@@ -9,6 +9,8 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\MembershipImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeoController;
+use App\Http\Controllers\StaffUserController;
+use App\Http\Middleware\PrivateDashboard;
 use Illuminate\Support\Facades\Route;
 
 // Route::get('/', function () {
@@ -38,33 +40,36 @@ Route::controller(HomeController::class)->group(function () {
     Route::post('/nc/registration', 'noCardRegister')->name('nc.register');
 });
 
-Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
-Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy']);
-Route::resource('executives', ExecutiveController::class)->only(['index', 'create', 'store', 'destroy']);
-Route::resource('executive-positions', ExecutivePositionController::class)->parameters(['executive-positions' => 'executivePosition'])->only(['index', 'store', 'update', 'destroy']);
 Route::view('/about', 'about')->name('about.page');
 Route::view('/contact', 'contact')->name('contact.page');
 Route::view('/updates', 'updates')->name('updates.page');
-Route::get('/membership/import', [MembershipImportController::class, 'index'])->name('membership.import');
-Route::post('/membership/import/preview', [MembershipImportController::class, 'preview'])->name('membership.import.preview');
-Route::post('/membership/import/confirm', [MembershipImportController::class, 'store'])->name('membership.import.store');
-Route::get('/membership/import/template/{format}', [MembershipImportController::class, 'template'])->name('membership.import.template');
-Route::get('/membership/import/locations', [MembershipImportController::class, 'locations'])->name('membership.import.locations');
-Route::post('/membership/cards/download', [MembershipController::class, 'bulkCards'])->name('membership.cards.download');
-Route::get('/membership/export/{type}', [MembershipController::class, 'export'])->name('membership.export');
-Route::get('/membership/{membership}/edit', [MembershipController::class, 'edit'])->whereNumber('membership')->name('membership.edit');
-Route::get('/membership/{membership}/card', [MembershipController::class, 'card'])->whereNumber('membership')->name('membership.card');
-Route::get('/membership/{membership}', [MembershipController::class, 'show'])->whereNumber('membership')->name('membership.show');
-Route::patch('/membership/{membership}', [MembershipController::class, 'update'])->whereNumber('membership')->name('membership.update');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware([PrivateDashboard::class, 'auth', 'can:access-dashboard'])->group(function () {
+    Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
+    Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
+    Route::resource('executives', ExecutiveController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
+    Route::resource('executive-positions', ExecutivePositionController::class)->parameters(['executive-positions' => 'executivePosition'])->only(['index', 'store', 'update', 'destroy'])->middleware('can:manage-positions');
+    Route::get('/membership/import', [MembershipImportController::class, 'index'])->name('membership.import')->middleware('can:import-members');
+    Route::post('/membership/import/preview', [MembershipImportController::class, 'preview'])->name('membership.import.preview')->middleware('can:import-members');
+    Route::post('/membership/import/confirm', [MembershipImportController::class, 'store'])->name('membership.import.store')->middleware('can:import-members');
+    Route::get('/membership/import/template/{format}', [MembershipImportController::class, 'template'])->name('membership.import.template')->middleware('can:import-members');
+    Route::get('/membership/import/locations', [MembershipImportController::class, 'locations'])->name('membership.import.locations')->middleware('can:import-members');
+    Route::post('/membership/cards/download', [MembershipController::class, 'bulkCards'])->name('membership.cards.download')->middleware('can:download-cards');
+    Route::get('/membership/export/{type}', [MembershipController::class, 'export'])->name('membership.export')->middleware('can:export-data');
+    Route::get('/membership/{membership}/edit', [MembershipController::class, 'edit'])->whereNumber('membership')->name('membership.edit')->middleware('can:update-members');
+    Route::get('/membership/{membership}/card', [MembershipController::class, 'card'])->whereNumber('membership')->name('membership.card')->middleware('can:download-cards');
+    Route::get('/membership/{membership}', [MembershipController::class, 'show'])->whereNumber('membership')->name('membership.show');
+    Route::patch('/membership/{membership}', [MembershipController::class, 'update'])->whereNumber('membership')->name('membership.update')->middleware('can:update-members');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/dashboard', fn () => redirect()->route('membership.index'))->name('dashboard');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
+
+    Route::resource('staff-users', StaffUserController::class)->parameters(['staff-users' => 'staffUser'])->only(['index', 'store', 'update'])->middleware('can:manage-users');
 });
 
 require __DIR__.'/auth.php';

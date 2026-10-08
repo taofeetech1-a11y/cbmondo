@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -48,9 +51,14 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
-
-        $user->delete();
+        DB::transaction(function () use ($user): void {
+            $superAdmins = User::where('role', 'super_admin')->where('is_active', true)->orderBy('id')->lockForUpdate()->get();
+            if ($superAdmins->contains('id', $user->id) && $superAdmins->count() <= 1) {
+                throw ValidationException::withMessages(['password' => 'Keep at least one active super admin.'])->errorBag('userDeletion');
+            }
+            Auth::logout();
+            $user->delete();
+        }, 3);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

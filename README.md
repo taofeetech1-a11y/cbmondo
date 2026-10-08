@@ -125,11 +125,26 @@ Implemented improvements include consistent registration validation, duplicate p
 
 Remaining work:
 
-- Authentication and access control for the membership dashboard and its actions. The current membership routes are not protected by authentication middleware.
 - Member change history.
 - Scheduled backups and verified recovery.
 
 See [TODO.md](TODO.md) for the detailed checklist and completion history.
+
+## Staff access
+
+The `main` branch requires staff sign-in for the dashboard. The pre-authentication version is preserved on `codex/no-authentication`.
+
+Super admins have full access and can create staff accounts, assign roles and deactivate accounts through **Staff accounts**. Admins can view members, manage executive positions, and assign or remove appointments. Admins cannot update member information, export data, download ID cards, import members or manage staff accounts. Restrictions are enforced on server routes as well as in the interface. Public membership registration remains available; public staff-account registration is disabled.
+
+When deploying this release, preserve the production `.env` and storage, install the locked dependencies and build assets as usual, then run in the application directory:
+
+```bash
+php artisan migrate --force
+php artisan staff:create-super-admin
+php artisan optimize
+```
+
+The account command securely prompts for a name, email and password (minimum 12 characters). Run it once for the first super admin, then sign in at `/login` and create other accounts through **Staff accounts**. Existing user accounts receive no dashboard access until a super admin assigns a role and activates them. Configure production mail for password-reset emails. The last active super admin cannot be deactivated, demoted or self-deleted.
 
 ## Search engine optimization
 

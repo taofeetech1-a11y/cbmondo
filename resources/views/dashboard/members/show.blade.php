@@ -5,15 +5,15 @@
     <a class="btn btn-outline" href="{{ route($directoryRoute, $filters) }}">← Back to {{ $directoryRoute === 'excos.index' ? 'Excos' : 'members' }}</a>
     <div class="page-head">
         <div><span class="eyebrow">MEMBER PROFILE</span><h1>{{ $member->name }}</h1><p>{{ $member->cbm_id }}</p></div>
-        <a class="btn btn-primary" href="{{ route('membership.edit', ['membership' => $member, 'filters' => $filters, 'from' => $directoryRoute === 'excos.index' ? 'excos' : null]) }}">Update member</a>
+        @can('update-members')<a class="btn btn-primary" href="{{ route('membership.edit', ['membership' => $member, 'filters' => $filters, 'from' => $directoryRoute === 'excos.index' ? 'excos' : null]) }}">Update member</a>@endcan
     </div>
-    <section class="panel member-id-section" aria-labelledby="member-id-title">
+    @can('download-cards')<section class="panel member-id-section" aria-labelledby="member-id-title">
         <div class="panel-head"><div><span class="eyebrow">YOUR MEMBERSHIP</span><h2 id="member-id-title">CBM ID card</h2></div>
             <a class="btn btn-primary" href="{{ route('membership.card', ['membership' => $member, 'download' => 1]) }}" download>Download ID card</a>
         </div>
         <p class="member-help">PNG · 1200 × 704 pixels. Your downloaded card keeps the same size and layout on every device.</p>
         <img class="member-id-preview" src="{{ route('membership.card', $member) }}" width="1200" height="704" alt="City Boy Movement Ondo State membership card for {{ $member->name }}. CBM ID: {{ $member->cbm_id }}. Member ID: {{ $member->cbm_delimitation_code ?: 'Not assigned' }}.">
-    </section>
+    </section>@endcan
     <section class="panel">
         <dl class="member-details">
             @foreach ([

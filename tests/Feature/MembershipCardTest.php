@@ -1,8 +1,13 @@
 <?php
 
+use App\Models\User;
 use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('member cards are downloadable PNGs with fixed dimensions', function (?string $code) {
     $member = MembershipFactory::new()->create(['name' => 'A VERY LONG MEMBERSHIP NAME', 'cbm_delimitation_code' => $code]);

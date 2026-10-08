@@ -3,7 +3,12 @@
 use App\Models\Lga;
 use App\Models\Membership;
 use App\Models\PollingUnit;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 function memberUpdatePayload(Membership $member): array
 {

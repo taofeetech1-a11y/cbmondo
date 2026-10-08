@@ -3,9 +3,14 @@
 use App\Models\ExecutiveAssignment;
 use App\Models\ExecutivePosition;
 use App\Models\Lga;
+use App\Models\User;
 use Database\Factories\MembershipFactory;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('LGA position creation and renaming apply to every LGA', function () {
     $first = Lga::factory()->create();

@@ -1,7 +1,12 @@
 <?php
 
+use App\Models\User;
 use App\View\MembershipCard;
 use Database\Factories\MembershipFactory;
+
+beforeEach(function () {
+    $this->actingAs(User::factory()->superAdmin()->create());
+});
 
 test('bulk ZIP contains every matching card across pagination', function () {
     $members = MembershipFactory::new()->count(12)->create(['lga' => '1', 'ward' => null, 'created_at' => '2026-09-25 12:00:00']);

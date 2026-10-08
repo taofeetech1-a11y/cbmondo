@@ -14,6 +14,19 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    public const ROLES = ['super_admin' => 'Super admin', 'admin' => 'Admin'];
+
+    public const PERMISSIONS = ['access-dashboard', 'export-data', 'download-cards', 'update-members', 'import-members', 'manage-appointments', 'manage-positions', 'manage-users'];
+
+    public function hasPermission(string $permission): bool
+    {
+        if (! $this->is_active || ! in_array($permission, self::PERMISSIONS, true)) {
+            return false;
+        }
+
+        return $this->role === 'super_admin' || ($this->role === 'admin' && in_array($permission, ['access-dashboard', 'manage-appointments', 'manage-positions'], true));
+    }
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -27,6 +40,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 }
