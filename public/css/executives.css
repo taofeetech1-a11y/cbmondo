@@ -1,0 +1,10 @@
+.executive-pages { display:grid; gap:22px; min-width:0; }
+.executive-nav, .executive-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.executive-nav [aria-current="page"] { outline:2px solid #237e58; outline-offset:2px; }
+.executive-pages .field input { width:100%; min-width:0; padding:12px; border:1px solid #d9e4de; border-radius:10px; font:inherit; background:#f8fbf9; }
+.executive-pages .stats, .executive-pages .page-head { margin-bottom:0; }
+.executive-pages .table-panel > p { color:#5c6b70; font-size:13px; margin:12px 0; }
+.executive-pages .executive-rename { display:flex; gap:8px; align-items:center; }
+.executive-pages .executive-rename input { min-width:180px; padding:10px; border:1px solid #d9e4de; border-radius:8px; }
+.executive-pages form { margin:0; }
+@media(max-width:600px) { .executive-nav > a { flex:1 1 100%; } }

@@ -2,13 +2,20 @@
 
 namespace App\Models;
 
+use App\Support\ExecutiveAppointments;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Membership extends Model
 {
     protected $guarded = [];
+
+    public function executiveAssignments(): HasMany
+    {
+        return $this->hasMany(ExecutiveAssignment::class);
+    }
 
     public function exco(): HasOne
     {
@@ -32,6 +39,8 @@ class Membership extends Model
 
     protected static function booted(): void
     {
+        static::updating(fn (Membership $member) => ExecutiveAppointments::assertLocationChange($member));
+
         static::creating(function (Membership $guest) {
             do {
                 $passId = 'CBM-ON-'.Str::lower(Str::random(6));

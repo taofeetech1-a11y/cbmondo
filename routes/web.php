@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\ExcoController;
+use App\Http\Controllers\ExecutiveController;
+use App\Http\Controllers\ExecutivePositionController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\MembershipImportController;
@@ -38,6 +40,8 @@ Route::controller(HomeController::class)->group(function () {
 
 Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
 Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy']);
+Route::resource('executives', ExecutiveController::class)->only(['index', 'create', 'store', 'destroy']);
+Route::resource('executive-positions', ExecutivePositionController::class)->parameters(['executive-positions' => 'executivePosition'])->only(['index', 'store', 'update', 'destroy']);
 Route::view('/about', 'about')->name('about.page');
 Route::view('/contact', 'contact')->name('contact.page');
 Route::view('/updates', 'updates')->name('updates.page');

@@ -1,0 +1,19 @@
+@extends('dashboard.executives.layout')
+@section('title', 'Executives Dashboard — CBM Ondo')
+@section('executive-content')
+<div class="page-head"><div><span class="eyebrow">LEADERSHIP ACROSS ONDO STATE</span><h1>Executives Dashboard</h1><p>State, LGA, ward and polling-unit appointments.</p></div></div>
+<div class="stats">@foreach(['assignments' => ['Appointments','stat-total'], 'members' => ['Individual executives','stat-green'], 'state' => ['State appointments','stat-violet'], 'local' => ['Local appointments','stat-amber']] as $key => [$label,$color])<section class="stat-card {{ $color }}"><div class="stat-heading">{{ $label }}</div><div class="stat-val">{{ number_format($stats[$key]) }}</div><p class="stat-sub">Matching current filters</p></section>@endforeach</div>
+<form class="filters" action="{{ route('executives.index') }}" method="GET">
+    <div class="field"><label for="executive-q">Name or CBM ID</label><input id="executive-q" name="q" maxlength="100" value="{{ request('q') }}"></div>
+    <div class="field"><label for="executive-level">Executive level</label><select id="executive-level" name="level"><option value="">All levels</option>@foreach(\App\Models\ExecutivePosition::LEVELS as $value => $label)<option value="{{ $value }}" @selected(request('level') === $value)>{{ $label }}</option>@endforeach</select></div>
+    @include('dashboard.executives.locations')
+    <div class="field"><label for="executive-gender">Gender</label><select id="executive-gender" name="gender"><option value="">All genders</option><option value="male" @selected(request('gender') === 'male')>Male</option><option value="female" @selected(request('gender') === 'female')>Female</option></select></div>
+    <button type="submit" class="btn btn-primary">Apply filters</button><a class="btn btn-outline" href="{{ route('executives.index') }}">Clear filters</a>
+</form>
+<section class="table-panel"><h2>Executive appointments</h2><p>Location filters use the member’s registered location, including for state executives. A member with state and local roles appears twice.</p>
+<div class="table-scroll" role="region" aria-label="Executive appointments" tabindex="0"><table><thead><tr>@foreach(['Member','CBM ID','Gender','Position','Level','Representing','Member LGA / ward / unit','Actions'] as $label)<th scope="col">{{ $label }}</th>@endforeach</tr></thead><tbody>
+@forelse($assignments as $assignment)
+<tr><td>{{ $assignment->membership->name }}</td><td>{{ $assignment->membership->cbm_id }}</td><td>{{ ucfirst($assignment->membership->gender) }}</td><td>{{ $assignment->position->name }}</td><td>{{ \App\Models\ExecutivePosition::LEVELS[$assignment->position->level] }}</td><td>{{ $assignment->position->level === 'lga' ? $assignment->lga?->name : $assignment->position->locationLabel() }}</td><td>{{ $assignment->membership->lgaInfo?->name ?? '—' }} / {{ $assignment->membership->wardInfo?->name ?? '—' }} / {{ $assignment->membership->puInfo?->name ?? '—' }}</td><td><div class="executive-actions"><a class="btn btn-outline" href="{{ route('membership.show', $assignment->membership) }}">View member</a><form method="POST" action="{{ route('executives.destroy', $assignment) }}" onsubmit="return confirm('Remove this executive appointment? Their membership and any other appointment will be kept.')">@csrf @method('DELETE')<button class="btn btn-outline" type="submit" aria-label="Remove {{ $assignment->membership->name }} as {{ $assignment->position->name }}">Remove appointment</button></form></div></td></tr>
+@empty<tr><td colspan="8"><div class="empty-state"><h3>No executive appointments found</h3><p>Add positions for a location, then assign registered members.</p></div></td></tr>@endforelse
+</tbody></table></div><div class="table-foot">{{ $assignments->links() }}</div></section>
+@endsection

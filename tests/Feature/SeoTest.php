@@ -15,7 +15,7 @@ test('public pages have one head and stable metadata without tracking parameters
 })->with([
     ['/', 'City Boy Movement Ondo State | Membership Registration'],
     ['/support', 'Support City Boy Movement Ondo State | Partner With Us'],
-    ['/about', 'About City Boy Movement Ondo State | CBM Ondo'],
+    ['/about', 'About Polling Unit Connect | CBM Ondo'],
     ['/contact', 'Contact City Boy Movement Ondo State | Membership Help'],
     ['/updates', 'Updates and Registration Information | CBM Ondo'],
 ]);

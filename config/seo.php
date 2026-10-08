@@ -15,8 +15,8 @@ return [
         ],
         'about.page' => [
             'path' => '/about',
-            'title' => 'About City Boy Movement Ondo State | CBM Ondo',
-            'description' => 'Learn about the City Boy Movement Ondo State membership portal, registration options, membership identification and ways to contact the team.',
+            'title' => 'About Polling Unit Connect | CBM Ondo',
+            'description' => 'Learn about Polling Unit Connect and its vision to build connected, informed and organized grassroots communities, one polling unit at a time.',
         ],
         'contact.page' => [
             'path' => '/contact',

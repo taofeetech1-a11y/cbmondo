@@ -1,13 +1,15 @@
-<x-public-page page="about.page" eyebrow="ABOUT CBM ONDO" title="City Boy Movement in Ondo State" intro="Information about the Ondo State membership portal and the services available to members.">
+<x-public-page page="about.page" eyebrow="POLLING UNIT CONNECT" title="About Polling Unit Connect" intro="One Polling Unit. One Community. Stay Connected.">
     <section class="public-card">
-        <h2>About this portal</h2>
-        <p>This is the City Boy Movement Ondo State membership platform. It provides a place to register membership details, receive a CBM membership ID and download a membership card.</p>
-        <p>The portal organizes registration by local government area, with ward and polling-unit details for members who have voter cards. Registration is also available to members without voter cards.</p>
+        <h2>Connecting people at the polling unit</h2>
+        <p>Polling Unit Connect is a digital community platform that connects people at the most local level of the electoral process: the polling unit.</p>
+        <p>It is designed to provide a structured environment where registered members within the same polling unit can discover one another, communicate, share information, and remain connected before, during, and after elections.</p>
+        <p>By organizing members across State, Local Government Area, Ward, and Polling Unit, the platform transforms individual registrations into connected local communities.</p>
     </section>
     <div class="public-grid">
-        <section class="public-card"><span class="public-number">01</span><h2>Membership registration</h2><p>The registration form asks for personal details, a Nigerian phone number, an age range and a local government area. An email address is optional.</p><a class="public-link" href="{{ route('new.homepage') }}#reg">Go to the registration form →</a></section>
-        <section class="public-card"><span class="public-number">02</span><h2>Membership identification</h2><p>A CBM ID identifies each registered member. Members with voter cards also receive a location-based membership code linked to their polling unit.</p><a class="public-link" href="{{ route('updates.page') }}#registration-guide">Read the registration guide →</a></section>
-        <section class="public-card"><span class="public-number">03</span><h2>Questions and enquiries</h2><p>Contact the team for registration help, corrections to membership information or enquiries about supporting the movement.</p><a class="public-link" href="{{ route('contact.page') }}">Find contact details →</a></section>
+        <section class="public-card"><span class="public-number">01</span><h2>Connecting people beyond registration</h2><p>Polling Unit Connect is more than a membership database. It is designed to create an active community where members can get to know people in their polling unit, interact, share relevant information, and stay informed before, during, and after elections.</p></section>
+        <section class="public-card"><span class="public-number">02</span><h2>Our vision</h2><p>Our vision is to use technology to build connected, informed and organized grassroots communities, one polling unit at a time.</p></section>
+        <section class="public-card"><span class="public-number">03</span><h2>Join your polling unit community</h2><p>Your community starts with your polling unit. Register with accurate information to take the first step toward connecting with other registered members.</p><p><a class="public-link" href="{{ route('new.homepage') }}#reg">Register now →</a></p><a class="public-link" href="{{ route('contact.page') }}">Ask about your polling unit community →</a></section>
     </div>
-    <aside class="public-note"><h2>Looking for the national movement?</h2><p>The national City Boy Movement website has further information about the wider organization.</p><a class="public-link" href="https://cbmnigeria.org/about">Visit the national About page →</a></aside>
+    <aside class="public-note"><h2>Registration notice</h2><p>Please provide accurate information. Registrations are subject to verification. Duplicate, inaccurate, or suspicious information may be flagged for review.</p></aside>
+    <section class="public-card"><h2>About City Boy Movement</h2><p>This platform is specifically dedicated to Polling Unit Connect, membership interaction, and related polling unit community features.</p><p>If you would like to learn more about City Boy Movement, including its national activities, programs, and organization, kindly visit the official national website.</p><a class="public-link" href="https://cbmnigeria.org/about">Visit City Boy Movement Nigeria →</a></section>
 </x-public-page>
