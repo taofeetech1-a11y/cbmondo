@@ -11,17 +11,35 @@
     @else
         <div class="coordinator-photo coordinator-initial" aria-label="No profile photo">{{ mb_substr($member->name, 0, 1) }}</div>
     @endif
-    <div><h2>{{ $member->name }}</h2><p>{{ $member->cbm_id }}</p><p>{{ $member->lgaInfo?->name ?? 'LGA not recorded' }} · {{ $member->wardInfo?->name ?? 'Ward not recorded' }} · {{ $member->puInfo?->name ?? 'Polling unit not recorded' }}</p></div>
+    <div class="coordinator-identity"><span class="eyebrow">YOUR MEMBERSHIP</span><h2>{{ $member->name }}</h2><p class="coordinator-id">{{ $member->cbm_id }}</p>
+        <dl class="coordinator-location">
+            <div><dt>LGA</dt><dd>{{ $member->lgaInfo?->name ?? 'Not recorded' }}</dd></div>
+            <div><dt>Ward</dt><dd>{{ $member->wardInfo?->name ?? 'Not recorded' }}</dd></div>
+            <div><dt>Polling unit</dt><dd>{{ $member->puInfo?->name ?? 'Not recorded' }}</dd></div>
+        </dl>
+    </div>
 </section>
 <div class="coordinator-panels">
     <section class="panel">
         <h2>Profile photo</h2>
-        <p>Choose a JPG, PNG or WebP image, up to 2 MB and 4096 × 4096 pixels.</p>
-        <form class="member-form" method="POST" enctype="multipart/form-data" action="{{ route('coordinator.photo.update') }}">
+        <p>Choose a picture from your phone or take a new selfie.</p>
+        <form id="coordinator-photo-form" class="member-form" method="POST" enctype="multipart/form-data" action="{{ route('coordinator.photo.update') }}">
             @csrf
             <div class="field member-full">
-                <label for="photo">Upload photo</label>
-                <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required>
+                <label for="photo">Choose a photo</label>
+                <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-help" required>
+                <div id="photo-camera-controls" class="photo-camera-controls" hidden>
+                    <button id="take-selfie" class="btn btn-outline" type="button">Take a selfie</button>
+                    <input id="selfie" type="file" accept="image/*" capture="user" aria-label="Take a selfie with your front camera" hidden>
+                    <p class="photo-help">Your phone may ask you to choose a camera. Switch to the front camera if needed.</p>
+                </div>
+                <p id="photo-help" class="photo-help">JPG, PNG or WebP. Maximum upload: 2 MB. Large pictures are resized automatically when supported.</p>
+                <div id="photo-preview-wrap" class="photo-preview-wrap" hidden>
+                    <img id="photo-preview" alt="Preview of your selected profile photo">
+                    <p>Preview — your photo is saved only when you tap Save photo.</p>
+                    <button id="clear-photo" type="button" class="btn btn-outline">Remove selection</button>
+                </div>
+                <p id="photo-feedback" class="photo-help" role="status" aria-live="polite"></p>
                 @error('photo', 'photo')<p class="field-error" role="alert">{{ $message }}</p>@enderror
             </div>
             <button class="btn btn-primary member-full" type="submit">Save photo</button>
@@ -44,4 +62,5 @@
         </form>
     </section>
 </div>
+<script src="{{ asset('js/coordinator-photo.js') }}" defer></script>
 @endsection

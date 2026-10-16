@@ -15,3 +15,37 @@
 .coordinator-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
 .coordinator-main input[type="file"] { overflow: hidden; }
 @media (max-width: 700px) { .coordinator-panels { grid-template-columns: minmax(0, 1fr); gap: 0; } .coordinator-summary { flex-direction: column; align-items: flex-start; gap: 12px; } .coordinator-header { padding: 16px; } }
+
+.coordinator-identity { flex: 1; min-width: 0; }
+.coordinator-main .coordinator-id { display: inline-block; margin: 4px 0 16px; padding: 6px 12px; background: #e7f5ed; color: #08634e; border-radius: 8px; font-weight: 650; }
+.coordinator-location { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.coordinator-location dt { font-size: 12px; color: var(--ink-soft); margin-bottom: 5px; }
+.coordinator-location dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.coordinator-main .btn { min-height: 48px; white-space: normal; text-align: center; }
+.coordinator-main .field input { min-height: 48px; font-size: 16px; }
+.coordinator-main input[type="file"] { padding: 10px; font-size: 14px; }
+.coordinator-main input::file-selector-button { border: 0; border-radius: 8px; padding: 10px 12px; margin-right: 10px; background: #e7f5ed; color: #08634e; cursor: pointer; font: inherit; }
+.photo-camera-controls { margin-top: 14px; }
+.photo-camera-controls .btn { width: 100%; }
+.coordinator-main .photo-help { color: var(--ink-soft); font-size: 13px; line-height: 1.6; margin: 10px 0; }
+.coordinator-main .photo-help[data-error="true"] { color: #a2342c; }
+.photo-preview-wrap { padding: 16px; border: 1px solid var(--line); border-radius: 14px; text-align: center; margin-top: 16px; background: #f6faf8; }
+.photo-preview-wrap img { width: 160px; max-width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; }
+.photo-preview-wrap p { font-size: 13px; color: var(--ink-soft); }
+.coordinator-main [hidden] { display: none !important; }
+.coordinator-main button:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 700px) {
+    .coordinator-main { width: calc(100% - 24px); margin: 20px auto; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .coordinator-main .panel { padding: 20px; border-radius: 18px; margin-bottom: 16px; }
+    .coordinator-header { gap: 8px; padding: 12px; }
+    .coordinator-brand { gap: 8px; font-size: 14px; }
+    .coordinator-brand img { width: 40px; height: 40px; }
+    .coordinator-header .btn { min-height: 44px; padding: 8px 12px; }
+    .coordinator-summary { align-items: center; text-align: center; }
+    .coordinator-identity { width: 100%; }
+    .coordinator-location { grid-template-columns: minmax(0, 1fr); gap: 0; text-align: left; }
+    .coordinator-location > div { padding: 12px 0; border-top: 1px solid var(--line); }
+    .coordinator-photo { width: 96px; height: 96px; }
+    .coordinator-main .member-form { gap: 18px; }
+    .coordinator-main .member-form > .btn { width: 100%; }
+}
