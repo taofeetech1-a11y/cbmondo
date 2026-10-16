@@ -35,7 +35,7 @@ class CoordinatorSessionController extends Controller
         $request->session()->regenerate();
         $request->session()->forget('password_hash_coordinator');
 
-        return redirect()->route('coordinator.profile');
+        return redirect()->route('coordinator.dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

@@ -34,7 +34,7 @@ it('signs in with a CBM ID and keeps coordinator access separate from staff acce
     $agent = CoordinatorAgent::factory()->create();
     $this->get(route('coordinator.profile'))->assertRedirect(route('coordinator.login'));
     $this->get(route('coordinator.login'))->assertOk()->assertSee('CBM ID');
-    $this->post(route('coordinator.login'), ['cbm_id' => strtolower($agent->membership->cbm_id), 'password' => 'temporary-password-123'])->assertRedirect(route('coordinator.profile'));
+    $this->post(route('coordinator.login'), ['cbm_id' => strtolower($agent->membership->cbm_id), 'password' => 'temporary-password-123'])->assertRedirect(route('coordinator.dashboard'));
     $this->assertAuthenticatedAs($agent, 'coordinator');
     $this->assertGuest('web');
     $this->get(route('coordinator.profile'))->assertOk()->assertSee($agent->membership->name)->assertSee('Change password');
@@ -70,7 +70,7 @@ it('changes only the signed in coordinators password and rejects the old passwor
     $this->get(route('coordinator.profile'))->assertOk()->assertDontSee('You are using the shared default password.');
     $this->post(route('coordinator.logout'));
     $this->post(route('coordinator.login'), ['cbm_id' => $agent->membership->cbm_id, 'password' => 'temporary-password-123'])->assertSessionHasErrors('cbm_id');
-    $this->post(route('coordinator.login'), ['cbm_id' => $agent->membership->cbm_id, 'password' => 'a-new-private-password'])->assertRedirect(route('coordinator.profile'));
+    $this->post(route('coordinator.login'), ['cbm_id' => $agent->membership->cbm_id, 'password' => 'a-new-private-password'])->assertRedirect(route('coordinator.dashboard'));
 });
 
 it('rejects invalid password changes', function (array $overrides) {

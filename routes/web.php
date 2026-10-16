@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\CoordinatorAgentController;
+use App\Http\Controllers\CoordinatorDashboardController;
 use App\Http\Controllers\CoordinatorProfileController;
 use App\Http\Controllers\CoordinatorSessionController;
 use App\Http\Controllers\ExcoController;
@@ -84,6 +85,8 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
         Route::post('/login', [CoordinatorSessionController::class, 'store'])->middleware('throttle:30,1');
     });
     Route::middleware(['auth:coordinator', 'auth.session'])->group(function () {
+        Route::get('/dashboard', [CoordinatorDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/register', [CoordinatorDashboardController::class, 'register'])->name('register');
         Route::get('/profile', [CoordinatorProfileController::class, 'edit'])->name('profile');
         Route::put('/password', [CoordinatorProfileController::class, 'password'])->name('password');
         Route::post('/photo', [CoordinatorProfileController::class, 'updatePhoto'])->name('photo.update');

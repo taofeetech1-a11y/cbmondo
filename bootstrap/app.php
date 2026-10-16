@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SearchIndexing::class);
         $middleware->redirectGuestsTo(fn (Request $request) => route($request->is('coordinator/*') ? 'coordinator.login' : 'login'));
-        $middleware->redirectUsersTo(fn (Request $request) => route($request->is('coordinator/*') ? 'coordinator.profile' : 'dashboard'));
+        $middleware->redirectUsersTo(fn (Request $request) => route($request->is('coordinator/*') ? 'coordinator.dashboard' : 'dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
