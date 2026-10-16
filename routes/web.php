@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AppController;
+use App\Http\Controllers\CoordinatorAgentController;
+use App\Http\Controllers\CoordinatorProfileController;
+use App\Http\Controllers\CoordinatorSessionController;
 use App\Http\Controllers\ExcoController;
 use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\ExecutivePositionController;
@@ -44,7 +47,8 @@ Route::view('/about', 'about')->name('about.page');
 Route::view('/contact', 'contact')->name('contact.page');
 Route::view('/updates', 'updates')->name('updates.page');
 
-Route::middleware([PrivateDashboard::class, 'auth', 'can:access-dashboard'])->group(function () {
+Route::middleware([PrivateDashboard::class, 'auth:web', 'can:access-dashboard'])->group(function () {
+    Route::post('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'store'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.store');
     Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
     Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
     Route::resource('executives', ExecutiveController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
@@ -73,6 +77,20 @@ Route::middleware([PrivateDashboard::class, 'auth', 'can:access-dashboard'])->gr
 });
 
 require __DIR__.'/auth.php';
+
+Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard::class)->group(function () {
+    Route::middleware('guest:coordinator')->group(function () {
+        Route::get('/login', [CoordinatorSessionController::class, 'create'])->name('login');
+        Route::post('/login', [CoordinatorSessionController::class, 'store'])->middleware('throttle:30,1');
+    });
+    Route::middleware(['auth:coordinator', 'auth.session'])->group(function () {
+        Route::get('/profile', [CoordinatorProfileController::class, 'edit'])->name('profile');
+        Route::put('/password', [CoordinatorProfileController::class, 'password'])->name('password');
+        Route::post('/photo', [CoordinatorProfileController::class, 'updatePhoto'])->name('photo.update');
+        Route::get('/photo', [CoordinatorProfileController::class, 'photo'])->name('photo');
+        Route::post('/logout', [CoordinatorSessionController::class, 'destroy'])->name('logout');
+    });
+});
 
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');

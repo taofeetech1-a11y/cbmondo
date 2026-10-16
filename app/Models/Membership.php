@@ -12,6 +12,11 @@ class Membership extends Model
 {
     protected $guarded = [];
 
+    public function coordinatorAgent(): HasOne
+    {
+        return $this->hasOne(CoordinatorAgent::class);
+    }
+
     public function executiveAssignments(): HasMany
     {
         return $this->hasMany(ExecutiveAssignment::class);

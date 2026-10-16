@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CoordinatorAgent;
 use App\Models\User;
 
 return [
@@ -38,6 +39,7 @@ return [
     */
 
     'guards' => [
+        'coordinator' => ['driver' => 'session', 'provider' => 'coordinator_agents'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -62,6 +64,7 @@ return [
     */
 
     'providers' => [
+        'coordinator_agents' => ['driver' => 'eloquent', 'model' => CoordinatorAgent::class],
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),

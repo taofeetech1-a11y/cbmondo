@@ -2,6 +2,27 @@
 @section('title', 'Member details — CBM Ondo')
 @section('content')
 <div class="member-layout">
+    @if (session('status'))
+        <div class="member-notice" role="status">{{ session('status') }}</div>
+    @endif
+    @error('coordinator')
+        <div class="member-notice member-error" role="alert">{{ $message }}</div>
+    @enderror
+    @can('manage-users')
+        <section class="panel">
+            <h2>Coordinator-agent access</h2>
+            @if ($member->coordinatorAgent)
+                <p>This member has a coordinator-agent account. Sign in using CBM ID {{ $member->cbm_id }}.</p>
+            @else
+                <p>Create an account for this member using the configured shared default password.</p>
+                <form method="POST" action="{{ route('coordinator-agents.store', $member) }}">
+                    @csrf
+                    <button class="btn btn-primary" type="submit">Create coordinator-agent</button>
+                </form>
+            @endif
+            <a href="{{ route('coordinator.login') }}">Coordinator-agent sign in</a>
+        </section>
+    @endcan
     <a class="btn btn-outline" href="{{ route($directoryRoute, $filters) }}">← Back to {{ $directoryRoute === 'excos.index' ? 'Excos' : 'members' }}</a>
     <div class="page-head">
         <div><span class="eyebrow">MEMBER PROFILE</span><h1>{{ $member->name }}</h1><p>{{ $member->cbm_id }}</p></div>
