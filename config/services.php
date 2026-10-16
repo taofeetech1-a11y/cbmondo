@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'poppler' => [
+        'pdftotext' => env('PDFTOTEXT_PATH', 'pdftotext'),
+        'pdfimages' => env('PDFIMAGES_PATH', 'pdfimages'),
+    ],
+
+    'node' => env('NODE_BINARY', 'node'),
+
 ];

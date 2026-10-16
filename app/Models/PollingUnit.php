@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PollingUnit extends Model
 {
@@ -24,7 +25,13 @@ class PollingUnit extends Model
         return $this->belongsTo(Ward::class);
     }
 
-    public function members(){
+    public function voters(): HasMany
+    {
+        return $this->hasMany(Voter::class);
+    }
+
+    public function members()
+    {
         return $this->hasMany(Members::class, 'polling_unit');
     }
 }

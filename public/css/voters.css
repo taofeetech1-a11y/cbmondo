@@ -1,0 +1,119 @@
+.voter-nav { display:flex; align-items:center; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); margin-bottom:32px; padding-bottom:12px; }
+.voter-privacy-notice { padding:12px 16px; margin-bottom:20px; background:#fff4df; border:1px solid #ecd4a1; border-radius:10px; color:#78531f; font-size:12px; line-height:1.6; }
+.voter-private::after { content:attr(data-watermark); position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-25deg); color:rgba(24,78,59,.09); font-size:clamp(22px,4vw,52px); font-weight:750; white-space:nowrap; z-index:20; pointer-events:none; }
+.voter-print-notice { display:none; }
+@media print {
+    .voter-private, .coordinator-body:has(.voter-private) .coordinator-header, .coordinator-main:has(.voter-private) > .member-notice { display:none !important; }
+    .voter-print-notice { display:block !important; color:#000; font:16px sans-serif; }
+}
+.voter-card-actions { display:flex; justify-content:flex-end; border-top:1px solid var(--line); padding-top:14px; margin-top:16px; }
+.voter-edit-form { max-width:800px; margin-inline:auto; }
+.voter-edit-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 20px; }
+.voter-edit-form input { min-height:48px; padding:12px; font-size:16px; border:1px solid #d5dfd8; border-radius:9px; }
+.voter-edit-form input[readonly] { background:#f3f6f4; color:var(--ink-soft); cursor:default; }
+@media(max-width:560px) { .voter-edit-fields { grid-template-columns:minmax(0,1fr); } }
+.voter-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:end; }
+.voter-filters label { display:block; font-size:12px; font-weight:650; margin-bottom:8px; }
+.voter-filters select, .voter-filters input { width:100%; min-height:48px; border:1px solid #d5dfd8; border-radius:9px; padding:10px; background:#fff; color:var(--ink); font:inherit; font-size:13px; }
+.voter-filters select:disabled { background:#f3f6f4; opacity:.65; }
+.voter-filter-actions { display:flex; gap:10px; }
+.voter-filter-actions .btn { flex:1; }
+.voter-overview .voter-pending-summary { background:#fff7e8; }
+.voter-overview .voter-pending-summary strong { color:#956217; }
+.coordinator-main .voter-status-help { font-size:12px; color:var(--ink-soft); line-height:1.7; margin:0 0 18px; }
+.voter-status-grid { margin-bottom:28px; }
+.voter-unit-card h3 { font-size:15px; line-height:1.5; overflow-wrap:anywhere; margin:16px 0 5px; }
+.voter-status-badge { display:inline-block; padding:5px 9px; border-radius:6px; font-size:11px; font-weight:650; }
+.is-uploaded { background:#e3f3e7; color:#216346; }
+.is-pending { background:#fff0d5; color:#855715; }
+.voter-unit-code { color:var(--ink-soft); font-size:11px; }
+.coordinator-main .voter-unit-card p { font-size:12px; line-height:1.7; color:var(--ink-soft); margin:12px 0 18px; }
+.voter-unit-footer { display:flex; gap:10px; justify-content:space-between; align-items:center; border-top:1px solid var(--line); padding-top:14px; font-size:11px; }
+.voter-unit-footer a { color:#216346; font-weight:650; }
+.voter-unit-footer > span { color:var(--ink-soft); }
+@media(max-width:700px) { .voter-filters { grid-template-columns:minmax(0,1fr); } .voter-filters select, .voter-filters input { font-size:16px; } }
+.voter-nav a { padding:10px 14px; border-radius:8px; color:var(--ink-soft); font-size:13px; font-weight:600; text-decoration:none; }
+.voter-nav a[aria-current="page"], .voter-nav a:hover { background:#e0eee5; color:#18543d; }
+.voter-nav .voter-profile-link { margin-left:auto; }
+.voter-page-head { display:flex; justify-content:space-between; align-items:center; }
+.coordinator-main .voter-page-head p { margin:10px 0 0; color:var(--ink-soft); }
+.voter-page-head .btn { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+.voter-overview { display:grid; grid-template-columns:1fr 1fr 1.7fr; background:#fff; border:1px solid var(--line); border-radius:16px; margin-bottom:32px; overflow:hidden; }
+.voter-overview > div { padding:24px; }
+.voter-overview > div + div { border-left:1px solid var(--line); }
+.voter-overview strong { display:block; font-size:36px; letter-spacing:-.05em; line-height:1.25; color:#184e3b; margin:8px 0; }
+.voter-overview > div > span:last-child { font-size:12px; color:var(--ink-soft); }
+.voter-overview .voter-overview-note { display:flex; align-items:center; gap:16px; background:#e9f1e8; }
+.voter-overview-note b { font-size:14px; }
+.coordinator-main .voter-overview-note p { font-size:12px; line-height:1.7; color:#516958; margin:6px 0 0; }
+.voter-symbol { width:44px; height:44px; display:inline-grid; place-items:center; background:#d8e9d7; border-radius:12px; color:#245638; font-size:24px; flex-shrink:0; }
+.voter-results-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+.coordinator-main .voter-results-heading h2 { font-size:18px; margin:0; }
+.voter-results-heading > span { color:var(--ink-soft); font-size:12px; }
+.voter-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.voter-card { min-width:0; background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:0 3px 12px #183e3403; }
+.voter-card-heading { display:flex; gap:14px; align-items:center; margin-bottom:20px; }
+.voter-portrait { width:64px; height:80px; flex-shrink:0; object-fit:cover; border-radius:10px; background:#e9f2eb; }
+.voter-initial { display:grid; place-items:center; color:#36765b; font-size:28px; font-weight:650; }
+.voter-identity { min-width:0; }
+.voter-serial { font-size:9px; letter-spacing:.09em; color:#6b7d73; font-weight:700; }
+.voter-identity h3 { font-size:15px; line-height:1.5; margin:5px 0 6px; overflow-wrap:anywhere; }
+.voter-demographic { font-size:12px; color:var(--ink-soft); }
+.voter-details { display:grid; gap:14px; margin:0; }
+.voter-details dt { font-size:10px; color:var(--ink-soft); margin-bottom:5px; }
+.voter-details dd { margin:0; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.voter-vin { background:#f5f8f6; border-radius:8px; padding:10px 12px; }
+.voter-vin dd { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px; }
+.voter-location { border-top:1px solid #eef2ef; padding-top:12px; }
+.voter-grid .voter-empty { grid-column:1/-1; text-align:center; padding:56px 24px; }
+.voter-empty h2 { margin-top:20px; }
+.voter-empty p { color:var(--ink-soft); }
+.voter-pagination { display:flex; justify-content:center; margin-top:28px; }
+.voter-pagination ul { display:flex; gap:12px; list-style:none; padding:0; align-items:center; }
+.voter-pagination li > a, .voter-pagination li > span { display:block; padding:12px 20px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:13px; }
+.voter-pagination li.disabled { opacity:.5; }
+.voter-import-layout { display:grid; grid-template-columns:minmax(0,1.8fr) minmax(240px,1fr); gap:24px; align-items:start; }
+.voter-step { border:0; padding:0; margin:0; min-width:0; }
+.voter-step legend { font-size:17px; font-weight:650; margin-bottom:4px; display:flex; gap:12px; align-items:center; }
+.voter-step-number { display:inline-grid; place-items:center; width:32px; height:32px; border:1px solid #dbe8df; color:#247354; border-radius:9px; font-size:11px; }
+.coordinator-main .voter-help { font-size:12px; line-height:1.7; color:var(--ink-soft); margin:10px 0 20px; }
+.voter-import-form .field { margin-bottom:18px; }
+.voter-import-form .field label { display:block; font-size:12px; font-weight:650; margin-bottom:8px; }
+.voter-import-form .field-error { color:#a2342c; font-size:12px; }
+.voter-import-form select, .voter-import-form input { width:100%; font-family:inherit; }
+.voter-import-form select { min-height:48px; background-color:#fff; border:1px solid #d5dfd8; border-radius:9px; padding:12px; color:var(--ink); font-size:14px; }
+.voter-import-form select:disabled { background-color:#f5f7f5; color:#77827c; cursor:not-allowed; }
+.voter-file-step { border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+.voter-file-step legend { float:left; width:100%; margin-bottom:20px; }
+.voter-upload-box { clear:both; text-align:center; padding:24px 16px; background:#f6faf7; border:1px dashed #a9c4b1; border-radius:12px; }
+.voter-file-icon { display:inline-grid; place-items:center; width:40px; height:48px; margin-bottom:14px; background:#e3eee6; border-radius:8px; color:#2e6950; font-size:11px; font-weight:750; }
+.coordinator-main .voter-upload-box p { margin:8px 0 16px; }
+.voter-upload-box input[type="file"] { background:#fff; border:1px solid #e0e8e2; border-radius:8px; text-align:left; }
+.voter-form-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--line); padding-top:20px; margin-top:24px; }
+.voter-form-footer > span { font-size:11px; color:var(--ink-soft); }
+.voter-guide ol { list-style:none; counter-reset:guide; padding:0; margin:24px 0 0; }
+.voter-guide li { counter-increment:guide; position:relative; padding-left:32px; margin-bottom:24px; }
+.voter-guide li::before { content:counter(guide); position:absolute; left:0; top:0; font-size:11px; border-radius:50%; width:22px; height:22px; background:#edf4ef; color:#276749; display:grid; place-items:center; }
+.voter-guide li:last-child { margin-bottom:0; }
+.voter-guide b, .voter-import-note b { font-size:13px; }
+.coordinator-main .voter-guide p, .coordinator-main .voter-import-note p { font-size:12px; line-height:1.8; color:var(--ink-soft); margin:6px 0 0; }
+.voter-import-note { padding:0 16px; }
+.voter-nav a:focus-visible, .voter-import-form :focus-visible, .voter-pagination a:focus-visible { outline:3px solid #72ad8d; outline-offset:3px; }
+@media (max-width:900px) {
+    .voter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .voter-overview { grid-template-columns:1fr 1fr; }
+    .voter-overview .voter-overview-note { grid-column:1/-1; border-left:0; border-top:1px solid var(--line); }
+    .voter-import-layout { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:560px) {
+    .voter-nav { gap:2px; margin-bottom:24px; }
+    .voter-nav a { padding:10px; font-size:12px; }
+    .voter-nav .voter-profile-link { margin-left:0; }
+    .voter-page-head { flex-direction:column; align-items:stretch; }
+    .voter-overview > div { padding:18px; }
+    .voter-overview strong { font-size:30px; }
+    .voter-grid { grid-template-columns:minmax(0,1fr); gap:14px; }
+    .voter-form-footer { flex-direction:column; align-items:stretch; }
+    .voter-step legend { font-size:15px; }
+    .voter-import-form select { font-size:16px; }
+}

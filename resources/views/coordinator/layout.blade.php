@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ asset('css/m.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard-refresh.css') }}">
     <link rel="stylesheet" href="{{ asset('css/coordinator.css') }}">
+    @stack('styles')
 </head>
 <body class="coordinator-body {{ auth('coordinator')->check() ? 'coordinator-workspace' : '' }}">
     <header class="coordinator-header">
@@ -32,5 +33,6 @@
         @endif
         @yield('content')
     </main>
+    @stack('scripts')
 </body>
 </html>

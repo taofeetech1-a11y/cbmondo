@@ -14,12 +14,11 @@ use App\Http\Controllers\MembershipImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaffUserController;
+use App\Http\Controllers\VoterController;
+use App\Http\Controllers\VoterImportController;
 use App\Http\Middleware\PrivateDashboard;
+use App\Http\Middleware\ProtectVoterPages;
 use Illuminate\Support\Facades\Route;
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
 
 Route::controller(AppController::class)->group(function () {
 
@@ -97,3 +96,11 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
 
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+
+Route::middleware(['auth:coordinator'])->group(function () {
+    Route::get('/voters', [VoterImportController::class, 'index'])->middleware(ProtectVoterPages::class)->name('voters.index');
+    Route::get('/voters/import', [VoterImportController::class, 'create']);
+    Route::post('/voters/import', [VoterImportController::class, 'store'])->name('voters.import');
+    Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware(ProtectVoterPages::class)->whereNumber('voter')->name('voters.edit');
+    Route::patch('/voters/{voter}', [VoterController::class, 'update'])->whereNumber('voter')->name('voters.update');
+});
