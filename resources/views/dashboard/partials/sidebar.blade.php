@@ -36,13 +36,13 @@
     // route() throws if a route name doesn't exist yet -- fall back to '#'
     // so this partial still renders while you're wiring up the other pages.
     $navHref = fn ($name) => \Illuminate\Support\Facades\Route::has($name) ? route($name) : '#';
-    $navActive = fn ($name) => \Illuminate\Support\Facades\Route::has($name) && ($name === 'excos.index' ? request()->routeIs('excos.*') || request('from') === 'excos' : ($name === 'executives.index' ? request()->routeIs('executives.*', 'executive-positions.*') : request()->routeIs($name)));
+    $navActive = fn ($name) => \Illuminate\Support\Facades\Route::has($name) && ($name === 'excos.index' ? request()->routeIs('excos.*') || request('from') === 'excos' : ($name === 'executives.index' ? request()->routeIs('executives.*', 'executive-positions.*') : ($name === 'membership.index' ? request()->routeIs('membership.*') : request()->routeIs($name))));
 @endphp
 
 <aside class="sidebar" id="sidebar">
-    <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
+    <button type="button" class="sidebar-close" id="sidebarClose" aria-label="Close menu">&times;</button>
     <div class="sidebar-brand">
-        <div class="brand-mark">CB</div>
+        <div class="brand-mark"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="" width="40" height="40"></div>
         <div class="brand-text">
             <b>CBM Ondo</b>
             <span>City Boys Movement</span>
@@ -52,7 +52,7 @@
     <nav class="nav-scroll">
         <div class="nav-label">MAIN</div>
         @foreach ($mainNav as $item)
-            <a href="{{ $navHref($item['route']) }}" class="nav-item {{ $navActive($item['route']) ? 'active' : '' }}">
+            <a href="{{ $navHref($item['route']) }}" class="nav-item {{ $navActive($item['route']) ? 'active' : '' }}" @if($navActive($item['route'])) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">{!! $icons[$item['icon']] !!}</svg>
                 {{ $item['label'] }}
             </a>
@@ -81,10 +81,12 @@
                 Logout
             </button>
         </form> --}}
-        @can('view-voters')<a class="nav-item" href="{{ route('voters.index') }}">Voter directory</a>@endcan
-        @can('import-voters')<a class="nav-item" href="{{ route('voters.import.create') }}">Import voter registers</a>@endcan
-        @can('manage-users')<a class="nav-item" href="{{ route('staff-users.index') }}">Staff accounts</a>@endcan
-        <a class="nav-item" href="{{ route('profile.edit') }}">My account</a>
+        <div class="nav-label">WORKSPACE</div>
+        @can('view-voters')<a class="nav-item {{ request()->routeIs('voters.index', 'voters.edit') ? 'active' : '' }}" href="{{ route('voters.index') }}" @if(request()->routeIs('voters.index', 'voters.edit')) aria-current="page" @endif><span class="nav-symbol" aria-hidden="true">▤</span>Voter directory</a>@endcan
+        @can('import-voters')<a class="nav-item" href="{{ route('voters.import.create') }}"><span class="nav-symbol" aria-hidden="true">↥</span>Import voter registers</a>@endcan
+        @can('manage-users')<a class="nav-item {{ request()->routeIs('staff-users.*') ? 'active' : '' }}" href="{{ route('staff-users.index') }}" @if(request()->routeIs('staff-users.*')) aria-current="page" @endif><span class="nav-symbol" aria-hidden="true">♙</span>Staff accounts</a>@endcan
+        <div class="nav-label">ACCOUNT</div>
+        <a class="nav-item {{ request()->routeIs('profile.*') ? 'active' : '' }}" href="{{ route('profile.edit') }}" @if(request()->routeIs('profile.*')) aria-current="page" @endif><span class="nav-symbol" aria-hidden="true">◉</span>My account</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-item" style="width:100%;border:0;background:none;text-align:left;cursor:pointer">Log out</button></form>
     </nav>
 

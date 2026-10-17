@@ -30,22 +30,24 @@
     <link rel="stylesheet" href="{{ asset('css/m.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard-refresh.css') }}">
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('css/workspace.css') }}">
 </head>
 
-<body>
+<body class="workspace-body staff-workspace">
+    <a class="workspace-skip-link" href="#workspace-content">Skip to content</a>
 
     <div class="shell">
 
         @include('dashboard.partials.sidebar')
         {{-- @include('partials.sidebar') --}}
 
-        <div class="backdrop" id="backdrop"></div>
+        <div class="backdrop" id="backdrop" aria-hidden="true"></div>
 
         <!-- Main -->
         <div class="main">
             @include('dashboard.partials.topbar')
 
-            <main class="content">
+            <main class="content" id="workspace-content" tabindex="-1">
                 @yield('content')
             </main>
         </div>

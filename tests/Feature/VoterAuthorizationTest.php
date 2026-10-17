@@ -64,7 +64,7 @@ it('limits coordinator voters counts status cards and location choices to their 
         $this->get(route('voters.index', $filters))->assertOk()->assertDontSee('Outside voter')
             ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 0);
     }
-    $this->get(route('coordinator.register'))->assertRedirect(route('voters.index'));
+    $this->get(route('coordinator.register'))->assertRedirect(route('coordinator.dashboard'));
 });
 
 it('allows coordinators to update only phone numbers in their own polling unit', function () {
@@ -82,6 +82,45 @@ it('allows coordinators to update only phone numbers in their own polling unit',
     }
     expect($other->fresh()->phone)->toBe('08011111111');
     expect($unlinked->fresh()->phone)->toBeNull();
+});
+
+it('limits coordinator collection to incomplete voters and never renders private voter details', function () {
+    $unit = PollingUnit::factory()->create();
+    $pending = Voter::factory()->for($unit, 'pollingUnit')->create([
+        'full_name' => 'Needs a number', 'occupation' => 'Private occupation', 'phone' => null,
+    ]);
+    $complete = Voter::factory()->for($unit, 'pollingUnit')->create([
+        'full_name' => 'Already completed', 'phone' => '08012345678',
+    ]);
+    $this->actingAs(voterCoordinatorForUnit($unit), 'coordinator');
+
+    foreach (['coordinator.dashboard', 'voters.index'] as $route) {
+        $this->get(route($route))->assertOk()->assertSee('Needs a number')->assertDontSee('Already completed')
+            ->assertViewHas('phoneProgress', ['added' => 1, 'missing' => 1, 'percent' => 50])
+            ->assertDontSee($pending->vin)->assertDontSee('Private occupation')
+            ->assertDontSee('Voter identification number')->assertDontSee('years')
+            ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 1);
+    }
+    $this->get(route('voters.edit', $pending))->assertOk()->assertSee('Needs a number')
+        ->assertDontSee($pending->vin)->assertDontSee('Private occupation')
+        ->assertDontSee('voter-age')->assertDontSee('voter-gender')
+        ->assertDontSee('id="voter-full_name"', false)
+        ->assertDontSee('id="voter-vin"', false)->assertDontSee('id="voter-occupation"', false)
+        ->assertSee('id="voter-phone"', false);
+    $this->from(route('voters.edit', $pending))->patch(route('voters.update', $pending), ['phone' => 'invalid'])
+        ->assertSessionHasErrors('phone');
+    expect($pending->fresh()->phone)->toBeNull();
+    $this->patch(route('voters.update', $pending), ['phone' => '08099999999'])
+        ->assertSessionHasNoErrors()->assertRedirect(route('coordinator.dashboard'));
+    $this->get(route('coordinator.dashboard'))->assertOk()->assertDontSee('Needs a number')
+        ->assertViewHas('phoneProgress', ['added' => 2, 'missing' => 0, 'percent' => 100])
+        ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 0);
+    foreach ([$pending, $complete] as $voter) {
+        $this->get(route('voters.edit', $voter))->assertNotFound();
+        $this->get(route('voters.photo', $voter))->assertNotFound();
+        $this->patch(route('voters.update', $voter), ['phone' => '08011111111'])->assertNotFound();
+    }
+    expect($pending->fresh()->phone)->toBe('08099999999');
 });
 
 it('denies voter access to coordinators without a polling unit', function () {

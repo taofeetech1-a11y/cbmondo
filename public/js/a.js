@@ -12,21 +12,47 @@ const sidebar = document.getElementById('sidebar');
 const backdrop = document.getElementById('backdrop');
 const hamburger = document.getElementById('hamburger');
 const sidebarClose = document.getElementById('sidebarClose');
+const mobileNavigation = window.matchMedia('(max-width: 860px)');
+const workspaceMain = document.querySelector('.main');
+
+function syncSidebarAccess() {
+  if (!sidebar) return;
+  const expanded = sidebar.classList.contains('open');
+  sidebar.inert = mobileNavigation.matches && !expanded;
+  workspaceMain && (workspaceMain.inert = mobileNavigation.matches && expanded);
+  document.body.classList.toggle('navigation-open', mobileNavigation.matches && expanded);
+}
 
 function openSidebar() {
   hamburger?.setAttribute('aria-expanded', 'true');
   sidebar?.classList.add('open');
   backdrop?.classList.add('show');
+  syncSidebarAccess();
+  sidebarClose?.focus();
 }
 function closeSidebar() {
   hamburger?.setAttribute('aria-expanded', 'false');
   sidebar?.classList.remove('open');
   backdrop?.classList.remove('show');
+  syncSidebarAccess();
 }
 hamburger?.addEventListener('click', openSidebar);
-sidebarClose?.addEventListener('click', closeSidebar);
-backdrop?.addEventListener('click', closeSidebar);
+sidebarClose?.addEventListener('click', () => { closeSidebar(); hamburger?.focus(); });
+backdrop?.addEventListener('click', () => { closeSidebar(); hamburger?.focus(); });
+mobileNavigation.addEventListener('change', () => {
+  const focusWasInSidebar = sidebar?.contains(document.activeElement);
+  closeSidebar();
+  if (mobileNavigation.matches && focusWasInSidebar) hamburger?.focus();
+});
+syncSidebarAccess();
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Tab' && mobileNavigation.matches && sidebar?.classList.contains('open')) {
+    const focusable = [...sidebar.querySelectorAll('a[href], button:not([disabled]), [tabindex="0"]')].filter(element => element.getClientRects().length);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
   if (event.key === 'Escape' && sidebar?.classList.contains('open')) {
     closeSidebar();
     hamburger?.focus();

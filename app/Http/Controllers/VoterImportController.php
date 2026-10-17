@@ -87,16 +87,43 @@ class VoterImportController extends Controller
         $totalUnits = (clone $units)->count();
         $uploadedUnits = (clone $units)->where(fn (Builder $query) => $query->whereNotNull('register_uploaded_at')->orWhereHas('voters'))->count();
 
-        $voters = Voter::with('pollingUnit');
+        $phoneProgress = null;
+        $unitLeaderboard = collect();
+        $coordinatorPoints = 0;
+        $coordinatorRank = null;
+        if ($coordinator) {
+            $unitVoters = Voter::where('polling_unit_id', $coordinator->membership->pu);
+            $unitTotal = (clone $unitVoters)->count();
+            $missingPhones = (clone $unitVoters)->where(fn (Builder $query) => $query->whereNull('phone')->orWhere('phone', ''))->count();
+            $phoneProgress = [
+                'added' => $unitTotal - $missingPhones,
+                'missing' => $missingPhones,
+                'percent' => $unitTotal > 0 ? (int) round(($unitTotal - $missingPhones) / $unitTotal * 100) : 0,
+            ];
+            $unitLeaderboard = CoordinatorAgent::with('membership:id,name')
+                ->whereHas('membership', fn (Builder $query) => $query->where('pu', $coordinator->membership->pu))
+                ->withCount(['phoneCollections as points' => fn (Builder $query) => $query->where('polling_unit_id', $coordinator->membership->pu)])
+                ->orderByDesc('points')->orderBy('id')->get();
+            $coordinatorPoints = (int) $unitLeaderboard->firstWhere('id', $coordinator->id)?->points;
+            $coordinatorRank = 1 + $unitLeaderboard->where('points', '>', $coordinatorPoints)->count();
+        }
+
+        $voters = Voter::with('pollingUnit', 'phoneAddedBy.membership');
         if ($coordinator) {
             $voters->where('polling_unit_id', $coordinator->membership->pu);
+            $voters->where(fn (Builder $query) => $query->whereNull('phone')->orWhere('phone', ''));
         }
         if ($request->anyFilled(['lga', 'ward', 'polling_unit_id'])) {
             $voters->whereIn('polling_unit_id', (clone $units)->select('id'));
         }
         if ($request->filled('q')) {
             $search = '%'.trim($filters['q']).'%';
-            $voters->where(fn (Builder $query) => $query->where('full_name', 'like', $search)->orWhere('vin', 'like', $search));
+            $voters->where(function (Builder $query) use ($search, $coordinator): void {
+                $query->where('full_name', 'like', $search);
+                if (! $coordinator) {
+                    $query->orWhere('vin', 'like', $search);
+                }
+            });
         }
 
         if (($filters['upload_status'] ?? null) === 'uploaded') {
@@ -106,6 +133,12 @@ class VoterImportController extends Controller
         }
 
         return view('voters.index', [
+            'phoneProgress' => $phoneProgress,
+            'unitLeaderboard' => $unitLeaderboard,
+            'coordinatorPoints' => $coordinatorPoints,
+            'coordinatorRank' => $coordinatorRank,
+            'assignedUnit' => $assignedUnit,
+            'coordinatorName' => $coordinator?->membership?->name,
             'voters' => $voters->orderBy('serial')->orderBy('id')->paginate(24)->withQueryString(),
             'unitStatuses' => $units->with('ward.lga')->withCount('voters')->orderBy('name')->orderBy('id')->paginate(6, ['*'], 'unit_page')->withQueryString(),
             'totalUnits' => $totalUnits,

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class CoordinatorAgent extends Authenticatable
@@ -22,5 +23,10 @@ class CoordinatorAgent extends Authenticatable
     public function membership(): BelongsTo
     {
         return $this->belongsTo(Membership::class);
+    }
+
+    public function phoneCollections(): HasMany
+    {
+        return $this->hasMany(Voter::class, 'phone_added_by');
     }
 }

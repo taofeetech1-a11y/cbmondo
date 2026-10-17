@@ -84,7 +84,7 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
         Route::post('/login', [CoordinatorSessionController::class, 'store'])->middleware('throttle:30,1');
     });
     Route::middleware(['auth:coordinator', 'auth.session'])->group(function () {
-        Route::get('/dashboard', [CoordinatorDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [VoterImportController::class, 'index'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('dashboard');
         Route::get('/register', [CoordinatorDashboardController::class, 'register'])->name('register');
         Route::get('/profile', [CoordinatorProfileController::class, 'edit'])->name('profile');
         Route::put('/password', [CoordinatorProfileController::class, 'password'])->name('password');

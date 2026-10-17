@@ -18,6 +18,6 @@ class CoordinatorDashboardController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        return redirect()->route('voters.index');
+        return redirect()->route('coordinator.dashboard');
     }
 }

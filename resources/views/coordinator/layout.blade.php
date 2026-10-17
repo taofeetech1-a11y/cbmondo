@@ -9,8 +9,10 @@
     <link rel="stylesheet" href="{{ asset('css/dashboard-refresh.css') }}">
     <link rel="stylesheet" href="{{ asset('css/coordinator.css') }}">
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('css/workspace.css') }}">
 </head>
-<body class="coordinator-body {{ auth('coordinator')->check() ? 'coordinator-workspace' : '' }}">
+<body class="workspace-body coordinator-body {{ auth('coordinator')->check() ? 'coordinator-workspace' : '' }}">
+    <a class="workspace-skip-link" href="#workspace-content">Skip to content</a>
     <header class="coordinator-header">
         <a href="{{ auth()->user() instanceof \App\Models\User ? route('voters.import.create') : (auth('coordinator')->check() ? route('coordinator.dashboard') : route('new.homepage')) }}" class="coordinator-brand"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><span>PU CONNECT <small>360</small><br><small>{{ auth()->user() instanceof \App\Models\User ? 'Staff workspace' : 'Coordinator workspace' }}</small></span></a>
         @if(auth()->user() instanceof \App\Models\User)
@@ -25,11 +27,11 @@
     @auth('coordinator')
         <nav class="coordinator-nav" aria-label="Coordinator navigation">
             @foreach (['dashboard' => 'Home', 'register' => 'Voter register', 'profile' => 'My profile'] as $page => $label)
-                <a href="{{ route('coordinator.'.$page) }}" @if(request()->routeIs('coordinator.'.$page)) aria-current="page" @endif>{{ $label }}</a>
+                <a href="{{ route('coordinator.'.$page) }}" @if(request()->routeIs('coordinator.'.$page) || ($page === 'register' && request()->routeIs('voters.*'))) aria-current="page" @endif><span class="coordinator-nav-icon" aria-hidden="true">{{ ['dashboard' => '⌂', 'register' => '▤', 'profile' => '◉'][$page] }}</span><span>{{ $label }}</span></a>
             @endforeach
         </nav>
     @endauth
-    <main class="coordinator-main">
+    <main class="coordinator-main" id="workspace-content" tabindex="-1">
         @if(session('status'))
             <div class="member-notice" role="status">{{ session('status') }}</div>
         @endif

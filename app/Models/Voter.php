@@ -32,4 +32,14 @@ class Voter extends Model
     {
         return $this->belongsTo(PollingUnit::class);
     }
+
+    public function phoneAddedBy(): BelongsTo
+    {
+        return $this->belongsTo(CoordinatorAgent::class, 'phone_added_by');
+    }
+
+    protected function casts(): array
+    {
+        return ['phone_added_at' => 'datetime'];
+    }
 }
