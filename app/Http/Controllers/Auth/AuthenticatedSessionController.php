@@ -27,6 +27,7 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+        $request->session()->put('account_version_web', $request->user()->session_version);
 
         if ($request->user()->role === 'it') {
             $request->session()->forget('url.intended');

@@ -16,6 +16,7 @@ use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaffUserController;
 use App\Http\Controllers\VoterController;
 use App\Http\Controllers\VoterImportController;
+use App\Http\Middleware\EnsureAccountAccess;
 use App\Http\Middleware\PrivateDashboard;
 use App\Http\Middleware\ProtectVoterPages;
 use Illuminate\Support\Facades\Route;
@@ -47,7 +48,8 @@ Route::view('/about', 'about')->name('about.page');
 Route::view('/contact', 'contact')->name('contact.page');
 Route::view('/updates', 'updates')->name('updates.page');
 
-Route::middleware([PrivateDashboard::class, 'auth:web', 'can:access-dashboard'])->group(function () {
+Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::class, 'auth.session', 'can:access-dashboard'])->group(function () {
+    Route::patch('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'update'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.update');
     Route::post('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'store'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.store');
     Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
     Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
@@ -69,7 +71,8 @@ Route::middleware([PrivateDashboard::class, 'auth:web', 'can:access-dashboard'])
 
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:5,1')->name('profile.update');
+        Route::get('/profile/email/confirm/{user}', [ProfileController::class, 'confirmEmail'])->middleware(['signed', 'throttle:6,1'])->name('profile.email.confirm');
         Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     });
 
@@ -83,11 +86,11 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
         Route::get('/login', [CoordinatorSessionController::class, 'create'])->name('login');
         Route::post('/login', [CoordinatorSessionController::class, 'store'])->middleware('throttle:30,1');
     });
-    Route::middleware(['auth:coordinator', 'auth.session'])->group(function () {
+    Route::middleware(['auth:coordinator', EnsureAccountAccess::class, 'auth.session'])->group(function () {
         Route::get('/dashboard', [VoterImportController::class, 'index'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('dashboard');
         Route::get('/register', [CoordinatorDashboardController::class, 'register'])->name('register');
         Route::get('/profile', [CoordinatorProfileController::class, 'edit'])->name('profile');
-        Route::put('/password', [CoordinatorProfileController::class, 'password'])->name('password');
+        Route::put('/password', [CoordinatorProfileController::class, 'password'])->middleware('throttle:5,1')->name('password');
         Route::post('/photo', [CoordinatorProfileController::class, 'updatePhoto'])->name('photo.update');
         Route::get('/photo', [CoordinatorProfileController::class, 'photo'])->name('photo');
         Route::post('/logout', [CoordinatorSessionController::class, 'destroy'])->name('logout');
@@ -97,14 +100,14 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
-Route::middleware(['auth:web,coordinator', 'can:view-voters'])->group(function () {
+Route::middleware(['auth:web,coordinator', EnsureAccountAccess::class, 'auth.session', 'can:view-voters'])->group(function () {
     Route::get('/voters', [VoterImportController::class, 'index'])->middleware(ProtectVoterPages::class)->name('voters.index');
     Route::get('/voters/{voter}/photo', [VoterController::class, 'photo'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.photo');
     Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.edit');
     Route::patch('/voters/{voter}', [VoterController::class, 'update'])->middleware('can:update-voter,voter')->whereNumber('voter')->name('voters.update');
 });
 
-Route::middleware([PrivateDashboard::class, 'auth:web', 'can:import-voters'])->group(function () {
+Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::class, 'auth.session', 'can:import-voters'])->group(function () {
     Route::get('/voters/import', [VoterImportController::class, 'create'])->name('voters.import.create');
     Route::post('/voters/import', [VoterImportController::class, 'store'])->name('voters.import');
 });

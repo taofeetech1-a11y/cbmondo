@@ -30,7 +30,10 @@ class CoordinatorProfileController extends Controller
         $agent->password = $data['password'];
         $agent->password_changed_at = now();
         $agent->remember_token = Str::random(60);
+        $agent->session_version++;
+        $agent->temporary_password_expires_at = null;
         $agent->save();
+        $request->session()->put('account_version_coordinator', $agent->session_version);
         $request->session()->regenerate(true);
 
         return redirect()->route('coordinator.profile')->with('status', 'Password updated. Use your new password next time you sign in.');

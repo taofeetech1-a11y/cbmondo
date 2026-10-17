@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use App\Notifications\VerifyEmailChange;
+use Illuminate\Support\Facades\Notification;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -13,13 +15,16 @@ test('profile page is displayed', function () {
 });
 
 test('profile information can be updated', function () {
+    Notification::fake();
     $user = User::factory()->create();
+    $originalEmail = $user->email;
 
     $response = $this
         ->actingAs($user)
         ->patch('/profile', [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'current_password' => 'password',
         ]);
 
     $response
@@ -29,8 +34,15 @@ test('profile information can be updated', function () {
     $user->refresh();
 
     $this->assertSame('Test User', $user->name);
-    $this->assertSame('test@example.com', $user->email);
-    $this->assertNull($user->email_verified_at);
+    $this->assertSame($originalEmail, $user->email);
+    Notification::assertSentOnDemand(VerifyEmailChange::class);
+    Notification::assertSentOnDemand(VerifyEmailChange::class, function ($notification) {
+        $this->get($notification->verificationUrl)->assertRedirect(route('profile.edit'));
+
+        return true;
+    });
+    $this->assertSame('test@example.com', $user->fresh()->email);
+    $this->assertNotNull($user->fresh()->email_verified_at);
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {

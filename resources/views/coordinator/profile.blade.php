@@ -3,10 +3,10 @@
 @section('content')
 <div class="page-head"><div><span class="eyebrow">COORDINATOR-AGENT</span><h1>My profile</h1><p>Manage your photo and sign-in password.</p></div></div>
 @if (! $agent->password_changed_at)
-    <div class="member-notice" role="status">You are using the shared default password. Change it below to secure your account.</div>
+    <div class="member-notice" role="status">Set your own password below before accessing your polling unit. Your temporary password expires after 24 hours.</div>
 @endif
 <section class="panel coordinator-summary">
-    @if ($agent->photo_path)
+    @if ($agent->password_changed_at && $agent->photo_path)
         <img class="coordinator-photo" src="{{ route('coordinator.photo') }}" alt="Your profile photo">
     @else
         <div class="coordinator-photo coordinator-initial" aria-label="No profile photo">{{ mb_substr($member->name, 0, 1) }}</div>
@@ -20,6 +20,7 @@
     </div>
 </section>
 <div class="coordinator-panels">
+    @if($agent->password_changed_at)
     <section class="panel">
         <h2>Profile photo</h2>
         <p>Choose a picture from your phone or take a new selfie.</p>
@@ -45,8 +46,9 @@
             <button class="btn btn-primary member-full" type="submit">Save photo</button>
         </form>
     </section>
+    @endif
     <section class="panel">
-        <h2>Change password</h2>
+        <h2>{{ $agent->password_changed_at ? 'Change password' : 'Set your own password' }}</h2>
         <p>Choose a new password with at least 12 characters.</p>
         <form class="member-form" method="POST" action="{{ route('coordinator.password') }}">
             @csrf

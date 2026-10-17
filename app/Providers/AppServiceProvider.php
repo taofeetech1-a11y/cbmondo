@@ -30,12 +30,12 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-voters', fn (User|CoordinatorAgent $user): bool => $user instanceof User
             ? $user->is_active && $user->role === 'super_admin'
-            : (int) $user->membership?->pu > 0);
+            : $user->is_active && (int) $user->membership?->pu > 0);
 
         Gate::define('update-voter', function (User|CoordinatorAgent $user, Voter $voter): Response {
             $allowed = $user instanceof User
                 ? $user->is_active && $user->role === 'super_admin'
-                : (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id && blank($voter->phone);
+                : $user->is_active && (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id && blank($voter->phone);
 
             return $allowed ? Response::allow() : Response::denyAsNotFound();
         });

@@ -27,15 +27,17 @@ class CoordinatorSessionController extends Controller
             throw ValidationException::withMessages(['cbm_id' => 'Too many attempts. Try again in '.RateLimiter::availableIn($key).' seconds.']);
         }
         $agent = CoordinatorAgent::whereHas('membership', fn ($query) => $query->whereRaw('LOWER(cbm_id) = ?', [$cbmId]))->first();
-        if (! Auth::guard('coordinator')->attempt(['id' => $agent?->id ?? 0, 'password' => $data['password']])) {
+        $eligible = $agent && $agent->is_active && ($agent->password_changed_at || $agent->temporary_password_expires_at?->isFuture());
+        if (! Auth::guard('coordinator')->attempt(['id' => $eligible ? $agent->id : 0, 'is_active' => true, 'password' => $data['password']])) {
             RateLimiter::hit($key);
             throw ValidationException::withMessages(['cbm_id' => 'The CBM ID or password is incorrect.']);
         }
         RateLimiter::clear($key);
         $request->session()->regenerate();
         $request->session()->forget('password_hash_coordinator');
+        $request->session()->put('account_version_coordinator', $agent->session_version);
 
-        return redirect()->route('coordinator.dashboard');
+        return redirect()->route($agent->password_changed_at ? 'coordinator.dashboard' : 'coordinator.profile');
     }
 
     public function destroy(Request $request): RedirectResponse

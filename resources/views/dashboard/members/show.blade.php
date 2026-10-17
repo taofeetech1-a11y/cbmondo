@@ -9,12 +9,18 @@
         <div class="member-notice member-error" role="alert">{{ $message }}</div>
     @enderror
     @can('manage-users')
-        <section class="panel">
+        <section class="panel" id="coordinator-access">
             <h2>Coordinator-agent access</h2>
+            @if(session('coordinator_credentials.member_id') == $member->id && session('coordinator_credentials.password'))
+                <div class="member-notice" role="status"><strong>Temporary password: {{ session('coordinator_credentials.password') }}</strong><p>Shown once. Expires in 24 hours. Share privately with this member; they must set their own password before accessing voters.</p></div>
+            @endif
             @if ($member->coordinatorAgent)
                 <p>This member has a coordinator-agent account. Sign in using CBM ID {{ $member->cbm_id }}.</p>
+                <p>Status: <strong>{{ $member->coordinatorAgent->is_active ? 'Active' : 'Suspended' }}</strong></p>
+                <form method="POST" action="{{ route('coordinator-agents.update', $member) }}">@csrf @method('PATCH')<input type="hidden" name="action" value="{{ $member->coordinatorAgent->is_active ? 'suspend' : 'activate' }}"><button class="btn btn-outline" type="submit">{{ $member->coordinatorAgent->is_active ? 'Suspend coordinator' : 'Activate coordinator' }}</button></form>
+                <form method="POST" action="{{ route('coordinator-agents.update', $member) }}">@csrf @method('PATCH')<input type="hidden" name="action" value="reset-password"><button class="btn btn-outline" type="submit">Issue new temporary password</button></form>
             @else
-                <p>Create an account for this member using the configured shared default password.</p>
+                <p>Create an account with a unique temporary password, valid for 24 hours.</p>
                 <form method="POST" action="{{ route('coordinator-agents.store', $member) }}">
                     @csrf
                     <button class="btn btn-primary" type="submit">Create coordinator-agent</button>

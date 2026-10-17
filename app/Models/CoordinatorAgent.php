@@ -17,7 +17,7 @@ class CoordinatorAgent extends Authenticatable
 
     protected function casts(): array
     {
-        return ['password' => 'hashed', 'password_changed_at' => 'datetime'];
+        return ['password' => 'hashed', 'password_changed_at' => 'datetime', 'temporary_password_expires_at' => 'datetime', 'is_active' => 'boolean', 'session_version' => 'integer'];
     }
 
     public function membership(): BelongsTo

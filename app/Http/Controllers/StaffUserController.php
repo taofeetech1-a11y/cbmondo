@@ -46,6 +46,10 @@ class StaffUserController extends Controller
             if ($user->role === 'super_admin' && $user->is_active && $superAdmins->count() <= 1 && ($data['role'] !== 'super_admin' || ! $data['is_active'])) {
                 throw ValidationException::withMessages(['role' => 'Keep at least one active super admin.']);
             }
+            if ($user->role !== $data['role'] || $user->is_active !== (bool) $data['is_active']) {
+                $user->session_version++;
+                $user->remember_token = null;
+            }
             $user->role = $data['role'];
             $user->is_active = (bool) $data['is_active'];
             if (! $user->is_active) {

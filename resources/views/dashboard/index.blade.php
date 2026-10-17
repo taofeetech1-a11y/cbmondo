@@ -118,6 +118,7 @@
         <div class="table-head">
             <div>
                 <h3>Member directory</h3>
+                  @can('manage-users')<p class="member-help">To create or manage a coordinator-agent, open a member’s ••• menu and choose Coordinator-agent access.</p>@endcan
                 <div class="sub">{{ number_format($members->total()) }} matching records · Scroll across to view all details</div>
             </div>
             <div class="table-actions">
@@ -211,6 +212,7 @@
                                     aria-label="Actions for {{ $member->name }}" data-member-actions><span aria-hidden="true">•••</span></button>
                                 <div id="member-actions-{{ $member->id }}" class="member-actions-menu" popover>
                                     <div class="member-actions-title">{{ $member->name }}</div>
+                                    @can('manage-users')<a href="{{ route('membership.show', $member) }}#coordinator-access">Coordinator-agent access <span aria-hidden="true">↗</span></a>@endcan
                                     <a href="{{ route('membership.show', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">View <span aria-hidden="true">↗</span></a>
                                     @can('update-members')<a href="{{ route('membership.edit', ['membership' => $member, 'filters' => request()->only(['lga', 'ward', 'pu', 'has_voters_card', 'gender', 'period', 'date_from', 'date_to', 'trend', 'sort', 'direction', 'per_page', 'q', 'page'])]) }}">Update <span aria-hidden="true">✎</span></a>@endcan
                                 </div>

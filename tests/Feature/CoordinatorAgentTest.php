@@ -7,6 +7,26 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
+it('blocks coordinator creation by unauthorized staff roles', function (string $role, bool $active) {
+    $member = MembershipFactory::new()->create();
+    $staff = User::factory()->create(['role' => $role, 'is_active' => $active]);
+    $this->actingAs($staff, 'web')->post(route('coordinator-agents.store', $member))->assertForbidden();
+    $this->assertDatabaseCount('coordinator_agents', 0);
+})->with([
+    'admin' => ['admin', true],
+    'IT' => ['it', true],
+    'inactive super admin' => ['super_admin', false],
+    'unknown role' => ['unknown', true],
+]);
+
+it('prevents coordinators from creating other coordinator accounts through the staff endpoint', function () {
+    $agent = CoordinatorAgent::factory()->create();
+    $member = MembershipFactory::new()->create();
+    $this->actingAs($agent, 'coordinator')->post(route('coordinator-agents.store', $member))
+        ->assertRedirect(route('login'));
+    $this->assertDatabaseCount('coordinator_agents', 1);
+});
+
 it('allows only super admins to create accounts for existing members', function () {
     config(['coordinator.default_password' => 'shared-temporary-password']);
     $member = MembershipFactory::new()->create();
@@ -16,18 +36,19 @@ it('allows only super admins to create accounts for existing members', function 
     $this->post(route('coordinator-agents.store', $member))->assertSessionHasNoErrors()->assertRedirect(route('membership.show', $member));
     $agent = CoordinatorAgent::sole();
     expect($agent->membership_id)->toBe($member->id);
-    expect(Hash::check('shared-temporary-password', $agent->password))->toBeTrue();
+    expect(Hash::check(session('coordinator_credentials.password'), $agent->password))->toBeTrue();
+    expect($agent->temporary_password_expires_at)->not->toBeNull();
     $this->get(route('membership.show', $member))->assertSee('This member has a coordinator-agent account');
     $this->post(route('coordinator-agents.store', $member))->assertSessionHasErrors('coordinator');
     $this->post(route('coordinator-agents.store', 999999))->assertNotFound();
     $this->assertDatabaseCount('coordinator_agents', 1);
 });
 
-it('refuses account creation until a shared default is configured', function () {
+it('creates a unique temporary password without a configured shared default', function () {
     config(['coordinator.default_password' => null]);
     $member = MembershipFactory::new()->create();
-    $this->actingAs(User::factory()->superAdmin()->create())->post(route('coordinator-agents.store', $member))->assertSessionHasErrors('coordinator');
-    $this->assertDatabaseCount('coordinator_agents', 0);
+    $this->actingAs(User::factory()->superAdmin()->create())->post(route('coordinator-agents.store', $member))->assertSessionHasNoErrors();
+    $this->assertDatabaseCount('coordinator_agents', 1);
 });
 
 it('signs in with a CBM ID and keeps coordinator access separate from staff access', function () {
