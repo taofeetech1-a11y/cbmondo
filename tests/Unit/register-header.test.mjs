@@ -2,6 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readHeader } from '../../scripts/register-header.mjs';
 
+test('reads labelled cover-page locations, record total and print year', () => {
+  const pairs = [['State', 'ONDO'], ['LGA', 'OWO'], ['Ward', 'EHINOGBE'], ['PU', 'TEST SCHOOL'], ['Printed', '26-09-2026'], ['Records', '630']];
+  const items = pairs.flatMap(([label, value], index) => [
+    { str: label, x: 103, y: 705 - index * 25 },
+    { str: value, x: 208, y: 705 - index * 25 },
+  ]);
+  assert.deepEqual(readHeader(items), {
+    header: { state: 'ONDO', lga: 'OWO', registration_area: 'EHINOGBE', polling_unit: 'TEST SCHOOL' },
+    expected: 630, printedYear: 2026,
+  });
+});
+
 test('retains a split record total when the location header is missing', () => {
   assert.deepEqual(readHeader([
     { str: 'Total Records:', x: 10, y: 100 },

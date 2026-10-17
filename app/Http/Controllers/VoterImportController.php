@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CoordinatorAgent;
 use App\Models\Lga;
 use App\Models\PollingUnit;
 use App\Models\Voter;
@@ -28,6 +29,8 @@ class VoterImportController extends Controller
 
     public function store(Request $request, RegisterImporter $importer): RedirectResponse
     {
+        set_time_limit(max(300, (int) config('services.voter_import_timeout', 600)));
+
         $validated = $request->validate([
             'lga' => ['required', 'integer', 'exists:lgas,id'],
             'ward' => ['required', 'integer', Rule::exists('wards', 'id')->where('lga_id', $request->input('lga'))],
@@ -47,7 +50,7 @@ class VoterImportController extends Controller
             $count = $importer->import($pdfPath, $pollingUnit);
 
             return redirect()
-                ->route('voters.index')
+                ->route($request->user()->role === 'it' ? 'voters.import.create' : 'voters.index')
                 ->with('status', "$count voters imported.");
         } finally {
             Storage::disk('local')
@@ -66,6 +69,11 @@ class VoterImportController extends Controller
         ]);
 
         $units = PollingUnit::query();
+        $coordinator = $request->user() instanceof CoordinatorAgent ? $request->user() : null;
+        $assignedUnit = $coordinator?->membership?->puInfo;
+        if ($coordinator) {
+            $units->whereKey($coordinator->membership->pu);
+        }
         if ($request->filled('lga')) {
             $units->whereHas('ward', fn (Builder $query) => $query->where('lga_id', $filters['lga']));
         }
@@ -80,6 +88,9 @@ class VoterImportController extends Controller
         $uploadedUnits = (clone $units)->where(fn (Builder $query) => $query->whereNotNull('register_uploaded_at')->orWhereHas('voters'))->count();
 
         $voters = Voter::with('pollingUnit');
+        if ($coordinator) {
+            $voters->where('polling_unit_id', $coordinator->membership->pu);
+        }
         if ($request->anyFilled(['lga', 'ward', 'polling_unit_id'])) {
             $voters->whereIn('polling_unit_id', (clone $units)->select('id'));
         }
@@ -100,9 +111,9 @@ class VoterImportController extends Controller
             'totalUnits' => $totalUnits,
             'uploadedUnits' => $uploadedUnits,
             'pendingUnits' => $totalUnits - $uploadedUnits,
-            'lgas' => Lga::orderBy('name')->get(),
-            'wards' => Ward::where('lga_id', $filters['lga'] ?? 0)->orderBy('name')->get(),
-            'pollingUnits' => PollingUnit::where('ward_id', $filters['ward'] ?? 0)->orderBy('name')->get(),
+            'lgas' => Lga::when($coordinator, fn (Builder $query) => $query->whereKey($assignedUnit?->ward?->lga_id))->orderBy('name')->get(),
+            'wards' => Ward::where('lga_id', $filters['lga'] ?? $assignedUnit?->ward?->lga_id ?? 0)->when($coordinator, fn (Builder $query) => $query->whereKey($assignedUnit?->ward_id))->orderBy('name')->get(),
+            'pollingUnits' => PollingUnit::where('ward_id', $filters['ward'] ?? $assignedUnit?->ward_id ?? 0)->when($coordinator, fn (Builder $query) => $query->whereKey($assignedUnit?->id))->orderBy('name')->get(),
         ]);
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\CoordinatorAgent;
 use App\Models\PollingUnit;
+use App\Models\User;
 use App\Models\Voter;
 use App\Models\Ward;
 use Illuminate\Http\UploadedFile;
@@ -10,10 +10,40 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
-it('shows the location selectors to a signed in coordinator', function () {
+it('extends the web request time budget before processing a PDF import', function () {
+    $originalLimit = (int) ini_get('max_execution_time');
+    config(['services.voter_import_timeout' => 600]);
+    $unit = PollingUnit::factory()->create();
+    Storage::fake('local');
+    Process::fake(function (PendingProcess $process) {
+        expect((int) ini_get('max_execution_time'))->toBe(600);
+        File::put($process->command[3].'/records.json', json_encode([
+            'header' => null, 'expected' => 0, 'records' => [],
+        ], JSON_THROW_ON_ERROR));
+
+        return Process::result();
+    });
+
+    try {
+        set_time_limit(30);
+        $this->actingAs(User::factory()->superAdmin()->create(), 'web')
+            ->post(route('voters.import'), [
+                'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
+                'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
+            ])->assertSessionHasNoErrors()->assertRedirect(route('voters.index'));
+
+        expect($unit->fresh()->register_uploaded_at)->not->toBeNull();
+        Process::assertRan(fn (PendingProcess $process): bool => $process->command[1] === base_path('scripts/extract-register.mjs'));
+        expect(Storage::disk('local')->allFiles())->toBeEmpty();
+    } finally {
+        set_time_limit($originalLimit);
+    }
+});
+
+it('shows the location selectors to a signed in super admin', function () {
     $unit = PollingUnit::factory()->create();
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get('/voters/import')->assertOk()
         ->assertSee($unit->ward->lga->name)
         ->assertSee('name="lga"', false)
@@ -25,7 +55,7 @@ it('requires a location before starting extraction', function () {
     Process::fake();
     Storage::fake('local');
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), [
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
         ])->assertSessionHasErrors(['lga', 'ward', 'polling_unit_id']);
@@ -47,7 +77,7 @@ it('rejects a location outside the selected hierarchy', function (string $invali
     $data[$invalidField] = $invalidField === 'ward' ? $otherUnit->ward_id : $otherUnit->id;
     Process::fake();
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), $data)->assertSessionHasErrors($invalidField);
 
     Process::assertNothingRan();
@@ -58,7 +88,7 @@ it('rejects a polling unit that does not exist', function () {
     $ward = Ward::factory()->create();
     Process::fake();
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), [
             'lga' => $ward->lga_id,
             'ward' => $ward->id,
@@ -73,7 +103,7 @@ it('rejects a polling unit that does not exist', function () {
 it('restores location choices after validation fails', function () {
     $unit = PollingUnit::factory()->create();
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->from('/voters/import')->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id,
             'ward' => $unit->ward_id,
@@ -105,7 +135,7 @@ it('links imported and reimported voters to the selected polling unit', function
         return Process::result();
     });
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator');
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web');
     for ($attempt = 0; $attempt < 2; $attempt++) {
         $this->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id,
@@ -139,7 +169,7 @@ it('does not mark a polling unit uploaded when extraction fails', function () {
     Storage::fake('local');
     Process::fake(fn () => Process::result(errorOutput: 'Extraction failed', exitCode: 1));
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
@@ -163,7 +193,7 @@ it('marks a successfully imported empty register as uploaded', function () {
         return Process::result();
     });
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
@@ -191,7 +221,7 @@ it('uses the selected location when the PDF has no recognizable header', functio
         return Process::result();
     });
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),

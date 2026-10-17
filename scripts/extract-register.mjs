@@ -3,6 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { readHeader } from './register-header.mjs';
+import { parseRecords, matchLabelledPhoto } from './register-records.mjs';
 
 const [pdfPath, outDir] = process.argv.slice(2);
 if (!pdfPath || !outDir) {
@@ -12,8 +13,6 @@ if (!pdfPath || !outDir) {
 fs.mkdirSync(outDir, { recursive: true });
 
 const { OPS } = pdfjs;
-const VIN_RE = /^[0-9A-Z]{4}(?: [0-9A-Z]{4}){3} \d{3}$/;
-const GENDER_RE = /^(Male|Female)\b\s*(\d{1,3})?$/;
 const clean = (s) => s.replace(/\s+/g, ' ').replace(/\s+,/g, ',').trim();
 
 // Matrix product: apply A first, then B (PDF row-vector convention).
@@ -31,45 +30,6 @@ async function getItems(page) {
   return tc.items
     .filter((i) => typeof i.str === 'string' && i.str.trim() !== '')
     .map((i) => ({ str: clean(i.str), x: i.transform[4], y: i.transform[5] }));
-}
-
-function parsePage(items, mid) {
-  return items
-    .filter((i) => VIN_RE.test(i.str))
-    .map((v) => {
-      // Values stacked under the VIN in the same column: name, [occupation], gender (+age)
-      const col = items
-        .filter((i) => Math.abs(i.x - v.x) < 4 && i.y < v.y && v.y - i.y < 45)
-        .sort((a, b) => b.y - a.y);
-
-      const gi = col.findIndex((i) => GENDER_RE.test(i.str));
-      if (gi < 1) throw new Error(`Could not parse record with VIN ${v.str}`);
-
-      const m = col[gi].str.match(GENDER_RE);
-      let age = m[2];
-      if (!age) {
-        const ageItem = items
-          .filter((i) => /^\d{1,3}$/.test(i.str) && Math.abs(i.y - col[gi].y) < 3 && i.x > col[gi].x)
-          .sort((a, b) => a.x - b.x)[0];
-        age = ageItem?.str;
-      }
-
-      const fullName = col[0].str;
-      const [surname, ...rest] = fullName.split(',');
-      return {
-        vin: v.str,
-        x: v.x,
-        y: v.y,
-        column: v.x > mid ? 1 : 0,
-        full_name: fullName,
-        surname: surname.trim(),
-        other_names: rest.join(',').trim(),
-        occupation: gi > 1 ? col.slice(1, gi).map((i) => i.str).join(' ') : null,
-        gender: m[1],
-        age: Number(age),
-      };
-    })
-    .sort(byColumnThenTop);
 }
 
 // Find every image on the page together with where it is drawn.
@@ -101,6 +61,8 @@ async function findPhotos(page, mid) {
           id: args[0],
           distFromTop: top - imgTop,
           width: right - left,
+          left,
+          right,
           column: (left + right) / 2 > mid ? 1 : 0,
           y: (bottom + imgTop) / 2,
         });
@@ -134,7 +96,7 @@ async function savePhoto(page, id, file) {
 const data = new Uint8Array(fs.readFileSync(pdfPath));
 const doc = await pdfjs.getDocument({ data, verbosity: 0, useSystemFonts: true }).promise;
 
-const { header, expected } = readHeader(await getItems(await doc.getPage(1)));
+const { header, expected, printedYear } = readHeader(await getItems(await doc.getPage(1)));
 const records = [];
 const problems = [];
 
@@ -146,25 +108,35 @@ for (let p = 1; p <= doc.numPages; p++) {
   const page = await doc.getPage(p);
   const mid = (page.view[0] + page.view[2]) / 2;
 
-  const recs = parsePage(await getItems(page), mid);
+  const parsed = parseRecords(await getItems(page), mid, printedYear ?? new Date().getUTCFullYear());
+  problems.push(...parsed.problems.map((problem) => `Page ${p}: ${problem}`));
+  const recs = parsed.records;
   if (recs.length === 0) continue;
   const photos = await findPhotos(page, mid);
 
-  if (recs.length !== photos.length) {
+  if (!parsed.labelled && recs.length !== photos.length) {
     problems.push(`Page ${p}: ${recs.length} records but ${photos.length} photos; refusing to guess`);
     continue;
   }
 
+  const usedPhotos = new Set();
   for (let i = 0; i < recs.length; i++) {
     const r = recs[i];
-    if (Math.abs(photos[i].y - r.y) > 70) {
+    let photo;
+    try {
+      photo = parsed.labelled ? matchLabelledPhoto(r, photos, usedPhotos) : photos[i];
+    } catch (error) {
+      problems.push(`Page ${p}: ${error.message}`);
+      continue;
+    }
+    if (Math.abs(photo.y - r.y) > 70) {
       problems.push(`Page ${p}: photo ${i + 1} is not level with its record (${r.vin})`);
     }
     const file = `${r.vin.replace(/ /g, '')}.jpg`;
-    await savePhoto(page, photos[i].id, path.join(outDir, file));
+    await savePhoto(page, photo.id, path.join(outDir, file));
 
     records.push({
-      serial: records.length + 1,
+      serial: r.serial ?? records.length + 1,
       vin: r.vin,
       full_name: r.full_name,
       surname: r.surname,

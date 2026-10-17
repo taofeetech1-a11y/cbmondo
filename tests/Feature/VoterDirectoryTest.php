@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\CoordinatorAgent;
 use App\Models\PollingUnit;
+use App\Models\User;
 use App\Models\Voter;
 
 function createDirectoryVoter(PollingUnit $unit, string $vin, string $name): Voter
@@ -19,7 +19,7 @@ it('filters voters and upload summaries by location', function (string $field) {
     createDirectoryVoter($other, 'OTHER-VIN', 'Other Voter');
     $location = ['lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id];
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get(route('voters.index', [$field => $location[$field]]))->assertOk()
         ->assertSee('Matching Voter')->assertDontSee('Other Voter')
         ->assertViewHas('totalUnits', 1)->assertViewHas('uploadedUnits', 1)
@@ -32,7 +32,7 @@ it('searches by name or VIN without leaking voters from other locations', functi
     createDirectoryVoter($unit, 'UNRELATED', 'Unrelated Voter');
     createDirectoryVoter(PollingUnit::factory()->create(), 'OUTSIDE-MATCH-VIN', 'Outside Matching Voter');
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get(route('voters.index', ['lga' => $unit->ward->lga_id, 'q' => $search]))
         ->assertOk()->assertSee('Matching Voter')->assertDontSee('Unrelated Voter')
         ->assertDontSee('Outside Matching Voter')
@@ -45,7 +45,7 @@ it('distinguishes pending units from uploaded empty and older linked registers',
     PollingUnit::factory()->create(['name' => 'Empty uploaded unit', 'register_uploaded_at' => now()]);
     PollingUnit::factory()->create(['name' => 'Pending unit']);
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get(route('voters.index'))->assertOk()
         ->assertViewHas('uploadedUnits', 2)->assertViewHas('pendingUnits', 1)
         ->assertSee('Legacy uploaded unit')->assertSee('Empty uploaded unit')->assertSee('Pending unit');
@@ -63,7 +63,7 @@ it('rejects unrelated location selections and unsupported upload statuses', func
     $unit = PollingUnit::factory()->create();
     $other = PollingUnit::factory()->create();
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get(route('voters.index', ['lga' => $unit->ward->lga_id, 'ward' => $other->ward_id]))
         ->assertSessionHasErrors('ward');
     $this->get(route('voters.index', ['ward' => $unit->ward_id, 'polling_unit_id' => $other->id]))
@@ -78,7 +78,7 @@ it('preserves filters across voter and polling unit pagination', function () {
         createDirectoryVoter($unit, 'VIN-'.$number, 'Pagination Voter '.$number);
     }
 
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get(route('voters.index', ['lga' => $unit->ward->lga_id, 'q' => 'Pagination']))->assertOk()
         ->assertViewHas('voters', fn ($voters): bool => $voters->count() === 24 && str_contains($voters->nextPageUrl(), 'q=Pagination'))
         ->assertViewHas('unitStatuses', fn ($units): bool => $units->count() === 6 && str_contains($units->nextPageUrl(), 'unit_page=2'));

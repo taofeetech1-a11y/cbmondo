@@ -3,7 +3,7 @@
 @section('voter-content')
 <div class="page-head voter-page-head">
     <div><span class="eyebrow">GROW YOUR VOTER DIRECTORY</span><h1>Import a register</h1><p>One polling unit, one PDF. Choose its location to get started.</p></div>
-    <a class="btn btn-outline" href="{{ route('voters.index') }}">← Voter directory</a>
+    @can('view-voters')<a class="btn btn-outline" href="{{ route('voters.index') }}">← Voter directory</a>@endcan
 </div>
 @if ($errors->any())
     <div class="member-notice member-error" role="alert">Your register has not been imported. Please correct the highlighted fields below.</div>

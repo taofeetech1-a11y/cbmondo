@@ -1,12 +1,12 @@
 <?php
 
-use App\Models\CoordinatorAgent;
+use App\Models\User;
 use App\Models\Voter;
 
 it('marks voter directory and edit responses private and non-cacheable', function () {
-    $agent = CoordinatorAgent::factory()->create();
+    $agent = User::factory()->superAdmin()->create();
     $voter = Voter::factory()->create();
-    $this->actingAs($agent, 'coordinator');
+    $this->actingAs($agent, 'web');
 
     foreach ([route('voters.index'), route('voters.edit', $voter)] as $url) {
         $response = $this->get($url)->assertOk()
@@ -22,6 +22,6 @@ it('marks voter directory and edit responses private and non-cacheable', functio
 });
 
 it('keeps the privacy overlay off the import form', function () {
-    $this->actingAs(CoordinatorAgent::factory()->create(), 'coordinator')
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')
         ->get('/voters/import')->assertOk()->assertDontSee('class="voter-private"', false);
 });

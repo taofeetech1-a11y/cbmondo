@@ -166,7 +166,7 @@ class RegisterImporter
                 foreach ($records as $r) {
                     $photoPath = null;
                     if ($r['photo']) {
-                        $photoPath = Storage::disk('public')->putFileAs(
+                        $photoPath = Storage::disk('local')->putFileAs(
                             'voters',
                             new HttpFile("$work/{$r['photo']}"),
                             $r['photo']

@@ -3,7 +3,7 @@
 @section('voter-content')
 <div class="page-head voter-page-head">
     <div><span class="eyebrow">POLLING-UNIT REGISTERS</span><h1>Voter directory</h1><p>Your imported voter records, together in one place.</p></div>
-    <a class="btn btn-primary" href="{{ route('voters.import') }}">＋ Import a register</a>
+    @can('import-voters')<a class="btn btn-primary" href="{{ route('voters.import') }}">＋ Import a register</a>@endcan
 </div>
 @if ($errors->any())
     <div class="member-notice member-error" role="alert">{{ $errors->first() }}</div>
@@ -51,7 +51,7 @@
         <article class="voter-card">
             <div class="voter-card-heading">
                 @if ($voter->photo_path)
-                    <img class="voter-portrait" src="{{ asset('storage/'.$voter->photo_path) }}" alt="Photo of {{ $voter->full_name }}" loading="lazy" width="64" height="80">
+                    <img class="voter-portrait" src="{{ route('voters.photo', $voter) }}" alt="Photo of {{ $voter->full_name }}" loading="lazy" width="64" height="80">
                 @else
                     <div class="voter-portrait voter-initial" aria-label="No photo available">{{ mb_strtoupper(mb_substr($voter->full_name, 0, 1)) }}</div>
                 @endif
@@ -66,7 +66,7 @@
             <div class="voter-card-actions"><a class="btn btn-outline" href="{{ route('voters.edit', $voter) }}" aria-label="Edit {{ $voter->full_name }}">Edit voter →</a></div>
         </article>
     @empty
-        <section class="panel voter-empty"><span class="voter-symbol" aria-hidden="true">▤</span><h2>No voters found</h2><p>Try changing your filters or import a polling-unit register.</p><a class="btn btn-primary" href="{{ route('voters.import') }}">Import a register</a></section>
+        <section class="panel voter-empty"><span class="voter-symbol" aria-hidden="true">▤</span><h2>No voters found</h2><p>No voter records match your current location and search.</p>@can('import-voters')<a class="btn btn-primary" href="{{ route('voters.import') }}">Import a register</a>@endcan</section>
     @endforelse
 </div>
 @if ($voters->hasPages())

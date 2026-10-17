@@ -6,13 +6,14 @@ use App\Models\User;
 use Database\Factories\MembershipFactory;
 use Illuminate\Support\Facades\Gate;
 
-test('permission matrix matches the two staff roles', function (string $role, string $permission, bool $allowed) {
+test('permission matrix matches the staff roles', function (string $role, string $permission, bool $allowed) {
     $user = User::factory()->create(['role' => $role]);
     expect(Gate::forUser($user)->allows($permission))->toBe($allowed);
 })->with(function () {
     $cases = [];
     foreach (User::PERMISSIONS as $permission) {
         $cases['super admin '.$permission] = ['super_admin', $permission, true];
+        $cases['IT '.$permission] = ['it', $permission, $permission === 'import-voters'];
         $cases['admin '.$permission] = ['admin', $permission, in_array($permission, ['access-dashboard', 'manage-appointments', 'manage-positions'])];
     }
 

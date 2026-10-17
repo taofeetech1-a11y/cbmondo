@@ -28,6 +28,12 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()->role === 'it') {
+            $request->session()->forget('url.intended');
+
+            return redirect()->route('voters.import.create');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

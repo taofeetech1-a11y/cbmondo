@@ -24,12 +24,11 @@ it('shows only the signed in membership and handles an unassigned unit', functio
         ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
 });
 
-it('shows an honest register empty state', function () {
+it('redirects the register shortcut to the scoped voter directory', function () {
     $agent = CoordinatorAgent::factory()->create();
 
     $this->actingAs($agent, 'coordinator')->get(route('coordinator.register'))
-        ->assertSee('No voter records or photos have been imported.')
-        ->assertSee(route('coordinator.dashboard'));
+        ->assertRedirect(route('voters.index'));
 });
 
 it('redirects signed in coordinators away from login to Home', function () {

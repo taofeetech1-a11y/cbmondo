@@ -97,10 +97,14 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
-Route::middleware(['auth:coordinator'])->group(function () {
+Route::middleware(['auth:web,coordinator', 'can:view-voters'])->group(function () {
     Route::get('/voters', [VoterImportController::class, 'index'])->middleware(ProtectVoterPages::class)->name('voters.index');
-    Route::get('/voters/import', [VoterImportController::class, 'create']);
+    Route::get('/voters/{voter}/photo', [VoterController::class, 'photo'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.photo');
+    Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.edit');
+    Route::patch('/voters/{voter}', [VoterController::class, 'update'])->middleware('can:update-voter,voter')->whereNumber('voter')->name('voters.update');
+});
+
+Route::middleware([PrivateDashboard::class, 'auth:web', 'can:import-voters'])->group(function () {
+    Route::get('/voters/import', [VoterImportController::class, 'create'])->name('voters.import.create');
     Route::post('/voters/import', [VoterImportController::class, 'store'])->name('voters.import');
-    Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware(ProtectVoterPages::class)->whereNumber('voter')->name('voters.edit');
-    Route::patch('/voters/{voter}', [VoterController::class, 'update'])->whereNumber('voter')->name('voters.update');
 });

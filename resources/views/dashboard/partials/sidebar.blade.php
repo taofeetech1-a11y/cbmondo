@@ -81,6 +81,8 @@
                 Logout
             </button>
         </form> --}}
+        @can('view-voters')<a class="nav-item" href="{{ route('voters.index') }}">Voter directory</a>@endcan
+        @can('import-voters')<a class="nav-item" href="{{ route('voters.import.create') }}">Import voter registers</a>@endcan
         @can('manage-users')<a class="nav-item" href="{{ route('staff-users.index') }}">Staff accounts</a>@endcan
         <a class="nav-item" href="{{ route('profile.edit') }}">My account</a>
         <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="nav-item" style="width:100%;border:0;background:none;text-align:left;cursor:pointer">Log out</button></form>

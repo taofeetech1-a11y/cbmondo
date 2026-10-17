@@ -42,4 +42,6 @@ return [
 
     'node' => env('NODE_BINARY', 'node'),
 
+    'voter_import_timeout' => (int) env('VOTER_IMPORT_TIMEOUT', 600),
+
 ];

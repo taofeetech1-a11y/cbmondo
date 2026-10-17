@@ -17,7 +17,7 @@
     @endforeach
 </div>
 <div class="coordinator-panels">
-    <section class="panel"><span class="eyebrow">VOTER REGISTER</span><h2>Your unit’s contact records</h2><p>The voter register will be available here once the import feature is connected. Membership records are kept separate.</p><a class="btn btn-primary" href="{{ route('coordinator.register') }}">Open voter register →</a></section>
+    <section class="panel"><span class="eyebrow">VOTER REGISTER</span><h2>Your unit’s contact records</h2><p>View imported voters and collect phone numbers for your assigned polling unit.</p><a class="btn btn-primary" href="{{ route('coordinator.register') }}">Open voter register →</a></section>
     <section class="panel"><span class="eyebrow">YOUR ACCOUNT</span><h2>Make your profile yours</h2><p>Upload a photo or take a selfie, check your membership location, and change your password.</p><a class="btn btn-outline" href="{{ route('coordinator.profile') }}">Manage my profile →</a></section>
 </div>
 <section class="panel"><h2>Recent activity</h2><p>No register activity is available yet.</p></section>

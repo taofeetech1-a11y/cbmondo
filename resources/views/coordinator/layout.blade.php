@@ -12,13 +12,15 @@
 </head>
 <body class="coordinator-body {{ auth('coordinator')->check() ? 'coordinator-workspace' : '' }}">
     <header class="coordinator-header">
-        <a href="{{ auth('coordinator')->check() ? route('coordinator.dashboard') : route('new.homepage') }}" class="coordinator-brand"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><span>PU CONNECT <small>360</small><br><small>Coordinator workspace</small></span></a>
-        @auth('coordinator')
+        <a href="{{ auth()->user() instanceof \App\Models\User ? route('voters.import.create') : (auth('coordinator')->check() ? route('coordinator.dashboard') : route('new.homepage')) }}" class="coordinator-brand"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><span>PU CONNECT <small>360</small><br><small>{{ auth()->user() instanceof \App\Models\User ? 'Staff workspace' : 'Coordinator workspace' }}</small></span></a>
+        @if(auth()->user() instanceof \App\Models\User)
+            <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-outline" type="submit">Log out</button></form>
+        @elseif(auth('coordinator')->check())
             <form method="POST" action="{{ route('coordinator.logout') }}">
                 @csrf
                 <button class="btn btn-outline" type="submit">Log out</button>
             </form>
-        @endauth
+        @endif
     </header>
     @auth('coordinator')
         <nav class="coordinator-nav" aria-label="Coordinator navigation">
