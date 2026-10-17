@@ -19,5 +19,9 @@
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "pdfjs-dist": "^4.10.38",
+        "sharp": "^0.35.5"
     }
 }

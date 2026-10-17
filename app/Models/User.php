@@ -14,9 +14,9 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    public const ROLES = ['super_admin' => 'Super admin', 'admin' => 'Admin'];
+    public const ROLES = ['super_admin' => 'Super admin', 'admin' => 'Admin', 'it' => 'IT'];
 
-    public const PERMISSIONS = ['access-dashboard', 'export-data', 'download-cards', 'update-members', 'import-members', 'manage-appointments', 'manage-positions', 'manage-users'];
+    public const PERMISSIONS = ['access-dashboard', 'export-data', 'download-cards', 'update-members', 'import-members', 'import-voters', 'manage-appointments', 'manage-positions', 'manage-users'];
 
     public function hasPermission(string $permission): bool
     {
@@ -24,7 +24,9 @@ class User extends Authenticatable
             return false;
         }
 
-        return $this->role === 'super_admin' || ($this->role === 'admin' && in_array($permission, ['access-dashboard', 'manage-appointments', 'manage-positions'], true));
+        return $this->role === 'super_admin'
+            || ($this->role === 'it' && $permission === 'import-voters')
+            || ($this->role === 'admin' && in_array($permission, ['access-dashboard', 'manage-appointments', 'manage-positions'], true));
     }
 
     /** @use HasFactory<UserFactory> */

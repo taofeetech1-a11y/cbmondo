@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'poppler' => [
+        'pdftotext' => env('PDFTOTEXT_PATH', 'pdftotext'),
+        'pdfimages' => env('PDFIMAGES_PATH', 'pdfimages'),
+    ],
+
+    'node' => env('NODE_BINARY', 'node'),
+
+    'voter_import_timeout' => (int) env('VOTER_IMPORT_TIMEOUT', 600),
+
 ];

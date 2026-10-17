@@ -8,22 +8,33 @@
     <link rel="stylesheet" href="{{ asset('css/m.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard-refresh.css') }}">
     <link rel="stylesheet" href="{{ asset('css/coordinator.css') }}">
+    @stack('styles')
 </head>
-<body class="coordinator-body">
+<body class="coordinator-body {{ auth('coordinator')->check() ? 'coordinator-workspace' : '' }}">
     <header class="coordinator-header">
-        <a href="{{ route('new.homepage') }}" class="coordinator-brand"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><span>CBM Ondo<br><small>Unit coordinator-agent</small></span></a>
-        @auth('coordinator')
+        <a href="{{ auth()->user() instanceof \App\Models\User ? route('voters.import.create') : (auth('coordinator')->check() ? route('coordinator.dashboard') : route('new.homepage')) }}" class="coordinator-brand"><img src="{{ asset('assets/logo-cityboy.png') }}" alt="CBM Ondo"><span>PU CONNECT <small>360</small><br><small>{{ auth()->user() instanceof \App\Models\User ? 'Staff workspace' : 'Coordinator workspace' }}</small></span></a>
+        @if(auth()->user() instanceof \App\Models\User)
+            <form method="POST" action="{{ route('logout') }}">@csrf<button class="btn btn-outline" type="submit">Log out</button></form>
+        @elseif(auth('coordinator')->check())
             <form method="POST" action="{{ route('coordinator.logout') }}">
                 @csrf
                 <button class="btn btn-outline" type="submit">Log out</button>
             </form>
-        @endauth
+        @endif
     </header>
+    @auth('coordinator')
+        <nav class="coordinator-nav" aria-label="Coordinator navigation">
+            @foreach (['dashboard' => 'Home', 'register' => 'Voter register', 'profile' => 'My profile'] as $page => $label)
+                <a href="{{ route('coordinator.'.$page) }}" @if(request()->routeIs('coordinator.'.$page)) aria-current="page" @endif>{{ $label }}</a>
+            @endforeach
+        </nav>
+    @endauth
     <main class="coordinator-main">
         @if(session('status'))
             <div class="member-notice" role="status">{{ session('status') }}</div>
         @endif
         @yield('content')
     </main>
+    @stack('scripts')
 </body>
 </html>
