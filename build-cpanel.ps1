@@ -11,7 +11,7 @@ $releaseId = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToSt
 $releaseRoot = Join-Path $projectRoot "storage/app/cpanel-$releaseId"
 $appRoot = Join-Path $releaseRoot 'cbmondo'
 New-Item -ItemType Directory -Path $appRoot | Out-Null
-foreach ($directory in @('app','config','routes','resources','database/migrations','database/seeders','database/factories')) {
+foreach ($directory in @('app','config','routes','resources','scripts','database/migrations','database/seeders','database/factories')) {
     $destination = Join-Path $appRoot $directory
     New-Item -ItemType Directory -Path $destination -Force | Out-Null
     Copy-Item -Path (Join-Path $projectRoot "$directory/*") -Destination $destination -Recurse -Force
@@ -25,12 +25,13 @@ foreach ($entry in Get-ChildItem -LiteralPath "$projectRoot/public" -Force) {
         Copy-Item -LiteralPath $entry.FullName -Destination "$appRoot/public" -Recurse -Force
     }
 }
-foreach ($file in @('artisan','composer.json','composer.lock','.env.cpanel.example','CPANEL.md')) {
+foreach ($file in @('artisan','composer.json','composer.lock','package.json','package-lock.json','.env.cpanel.example','.env.staging.example','CPANEL.md')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $appRoot
 }
 Write-Output "Release staging: $appRoot"
 composer install --working-dir="$appRoot" --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed. Staging retained at $appRoot." }
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = "$releaseRoot.zip"
 $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)

@@ -8,7 +8,7 @@ Use PHP **8.4.1 or newer** (8.5 recommended), for both website and CLI. Laravel 
 
 Enable ctype, curl, dom, fileinfo, filter, gd (with FreeType/PNG), hash, iconv, mbstring, openssl, pdo_mysql, session, simplexml, tokenizer, xml, xmlreader, xmlwriter, zip and zlib. PHP must be 64-bit. Use MySQL 8+ or a Laravel-supported MariaDB version.
 
-Recommended PHP settings: memory_limit=256M, upload_max_filesize=2M, post_max_size=8M, max_execution_time=120, max_input_vars=1000. PHP's temporary directory and application storage must be writable. Host request timeouts can still limit large card ZIP/PDF downloads; split batches if needed.
+Recommended PHP settings: memory_limit=256M, upload_max_filesize=50M, post_max_size=64M, max_execution_time=120, max_input_vars=1000. PHP's temporary directory and application storage must be writable. Host request timeouts can still limit large card ZIP/PDF downloads; split batches if needed.
 
 Select PHP in MultiPHP Manager (some hosts use Select PHP Version). Confirm the CLI binary with your host; it may be /opt/cpanel/ea-php85/root/usr/bin/php. Below, php means that verified binary. Composer 2 and Terminal/SSH are recommended. Without Terminal, ask your host to run the commands below; do not create a public web installer.
 
@@ -18,9 +18,37 @@ Run in this project's PowerShell terminal:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\build-cpanel.ps1
 
-The script builds Vite assets and creates a timestamped ZIP in storage/app containing cbmondo and locked production dependencies. It excludes the live .env, databases, node_modules, development dependencies, cached configuration, sessions, logs, private uploads, old archives and duplicate checkouts. Local vendor is untouched. Node is not needed on cPanel.
+The script builds Vite assets and creates a timestamped ZIP in storage/app containing cbmondo and locked production dependencies. It excludes the live .env, databases, node_modules, development dependencies, cached configuration, sessions, logs, private uploads, old archives and duplicate checkouts. Local vendor is untouched. PDF imports require Node.js on cPanel. The archive includes extractor scripts and npm manifests; install Linux production dependencies on the server.
 
 This is an application package, not a database backup. Transfer required uploads and the database separately. Keep ZIPs and staging directories outside web-accessible folders.
+
+## Test this upgrade on a subdomain first
+
+Keep the live directory, database, APP_KEY, uploads and cron unchanged during staging.
+
+1. Back up the complete live database, persistent uploads, existing code and private environment file.
+2. Create the testing subdomain with AutoSSL. Extract the release to a separate private directory, such as `/home/CPANEL_USER/cbmondo-staging`, and point its document root to that directory's `public` folder.
+3. Create a separate staging database and user. Restore a copy of the live database there, preserving IDs and migration history. Never use live database credentials in staging.
+4. Copy `.env.staging.example` to staging's `.env`. Set the real subdomain, staging database credentials and absolute NODE_BINARY. Keep SESSION_DOMAIN=null, the distinct session cookie and cache prefix. Copy persistent uploads to staging's own storage; do not share live storage.
+5. For restored encrypted data, privately preserve the original APP_KEY. For a fresh empty installation generate a new key once. Keep staging mail on MAIL_MAILER=log to prevent test emails.
+6. Protect the entire subdomain with cPanel Directory Privacy and disable indexing through the host. A subdomain alone does not protect copied personal data.
+7. Inspect copied jobs, failed jobs and sessions in the staging database. Clear copied transient work before enabling staging cron; do not replay production jobs. Verify the database name before making these changes.
+8. Install Node dependencies below, run pending migrations with `php artisan migrate --force`, and run the finish-installation commands. Never use migrate:fresh or reseed populated location tables.
+9. Enable the staging cron. Test staff login, role boundaries, coordinator phone collection and credit, existing cards, assets, PDF uploads, failures/retries and automatic status changes. Compare restored record counts before and after migration.
+
+After approval, deploy code and pending migrations to live while preserving live data and APP_KEY. Do not copy staging's database over live: new registrations and phone updates may have continued. Pause the live import cron and let active jobs finish before changing code; enable it again after verification. Keep live and staging cron paths distinct.
+
+## Node.js for PDF imports
+
+Use Node.js 22 or 24 compatible with the locked packages (24 is used locally). Ask your host for its absolute binary path and set NODE_BINARY in the private environment file; cron can have a different PATH. No Node HTTP server is required.
+
+From the private application directory using the host's Node/npm environment:
+
+    node --version
+    npm ci --omit=dev --no-audit --no-fund
+    node --input-type=module -e "import sharp from 'sharp'; import('pdfjs-dist/legacy/build/pdf.mjs').then(() => console.log(sharp.versions))"
+
+Install on Linux so sharp receives Linux native binaries. Do not upload Windows node_modules or omit optional dependencies. If the host cannot provide compatible Node, sharp, subprocess execution or sufficient cron runtime, PDF extraction requires a supported worker environment before rollout.
 
 ## Layout A: configurable document root
 
@@ -60,7 +88,7 @@ Synchronize BOTH public asset copies on updates. Do not copy the project's root 
 
 When moving existing encrypted data, preserve the existing APP_KEY instead. Never regenerate it during updates. Keep the key and environment file in a private backup. Leave APP_DEBUG=false.
 
-The template uses secure encrypted database sessions, database cache, daily logs and synchronous queues; current features do not need a persistent worker. MAIL_MAILER=log does not send email: configure SMTP before relying on email delivery. Keep UTC timezone for current date-filter semantics.
+The template uses secure encrypted database sessions, database cache, daily logs and synchronous queues for other work; PDF imports use a dedicated database queue and require the cron worker below. MAIL_MAILER=log does not send email: configure SMTP before relying on email delivery. Keep UTC timezone for current date-filter semantics.
 
 Give storage and bootstrap/cache owner-write permissions (usually 755 for account-owned PHP-FPM; 775 only if group writing is required). Use 600 for .env if supported. Never use 777.
 
@@ -101,7 +129,7 @@ The archive includes production vendor. For source-only deployment first run:
 
 If public uploads are needed, use php artisan storage:link for layout A. For layout B link public_html/storage to /home/CPANEL_USER/cbmondo/storage/app/public; ask your host if symlinks are restricted. Never expose storage/app/private.
 
-No scheduled application tasks currently require cron. Add scheduler/worker configuration when later backup or background-job features require it.
+PDF imports require a cPanel cron job every minute (* * * * *). Use the verified absolute PHP binary and the correct private application path: php /home/CPANEL_USER/cbmondo-staging/artisan voters:work-imports. Overlapping workers are prevented. The host must allow PHP proc_open and CLI jobs lasting up to 660 seconds. Monitor errors privately in storage/logs.
 
 ## Verify on the real host
 
@@ -122,4 +150,3 @@ Back up the full database and required files and retain the prior release. Use p
 - https://laravel.com/docs/13.x/deployment
 - https://docs.cpanel.net/cpanel/domains/domains/manage-the-domain/
 - https://docs.cpanel.net/cpanel/software/multiphp-manager-for-cpanel/
-
