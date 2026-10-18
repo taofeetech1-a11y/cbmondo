@@ -5,6 +5,9 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { readHeader } from './register-header.mjs';
 import { parseRecords, matchLabelledPhoto } from './register-records.mjs';
 
+sharp.concurrency(1);
+sharp.cache({ memory: 16, files: 0, items: 32 });
+
 const [pdfPath, outDir] = process.argv.slice(2);
 if (!pdfPath || !outDir) {
   console.error('Usage: node extract-register.mjs <file.pdf> <outDir>');
@@ -106,46 +109,50 @@ if (!header) {
 
 for (let p = 1; p <= doc.numPages; p++) {
   const page = await doc.getPage(p);
-  const mid = (page.view[0] + page.view[2]) / 2;
+  try {
+    const mid = (page.view[0] + page.view[2]) / 2;
 
-  const parsed = parseRecords(await getItems(page), mid, printedYear ?? new Date().getUTCFullYear());
-  problems.push(...parsed.problems.map((problem) => `Page ${p}: ${problem}`));
-  const recs = parsed.records;
-  if (recs.length === 0) continue;
-  const photos = await findPhotos(page, mid);
+    const parsed = parseRecords(await getItems(page), mid, printedYear ?? new Date().getUTCFullYear());
+    problems.push(...parsed.problems.map((problem) => `Page ${p}: ${problem}`));
+    const recs = parsed.records;
+    if (recs.length === 0) continue;
+    const photos = await findPhotos(page, mid);
 
-  if (!parsed.labelled && recs.length !== photos.length) {
-    problems.push(`Page ${p}: ${recs.length} records but ${photos.length} photos; refusing to guess`);
-    continue;
-  }
-
-  const usedPhotos = new Set();
-  for (let i = 0; i < recs.length; i++) {
-    const r = recs[i];
-    let photo;
-    try {
-      photo = parsed.labelled ? matchLabelledPhoto(r, photos, usedPhotos) : photos[i];
-    } catch (error) {
-      problems.push(`Page ${p}: ${error.message}`);
+    if (!parsed.labelled && recs.length !== photos.length) {
+      problems.push(`Page ${p}: ${recs.length} records but ${photos.length} photos; refusing to guess`);
       continue;
     }
-    if (Math.abs(photo.y - r.y) > 70) {
-      problems.push(`Page ${p}: photo ${i + 1} is not level with its record (${r.vin})`);
-    }
-    const file = `${r.vin.replace(/ /g, '')}.jpg`;
-    await savePhoto(page, photo.id, path.join(outDir, file));
 
-    records.push({
-      serial: r.serial ?? records.length + 1,
-      vin: r.vin,
-      full_name: r.full_name,
-      surname: r.surname,
-      other_names: r.other_names,
-      occupation: r.occupation,
-      gender: r.gender,
-      age: r.age,
-      photo: file,
-    });
+    const usedPhotos = new Set();
+    for (let i = 0; i < recs.length; i++) {
+      const r = recs[i];
+      let photo;
+      try {
+        photo = parsed.labelled ? matchLabelledPhoto(r, photos, usedPhotos) : photos[i];
+      } catch (error) {
+        problems.push(`Page ${p}: ${error.message}`);
+        continue;
+      }
+      if (Math.abs(photo.y - r.y) > 70) {
+        problems.push(`Page ${p}: photo ${i + 1} is not level with its record (${r.vin})`);
+      }
+      const file = `${r.vin.replace(/ /g, '')}.jpg`;
+      await savePhoto(page, photo.id, path.join(outDir, file));
+
+      records.push({
+        serial: r.serial ?? records.length + 1,
+        vin: r.vin,
+        full_name: r.full_name,
+        surname: r.surname,
+        other_names: r.other_names,
+        occupation: r.occupation,
+        gender: r.gender,
+        age: r.age,
+        photo: file,
+      });
+    }
+  } finally {
+    page.cleanup();
   }
 }
 

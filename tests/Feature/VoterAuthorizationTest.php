@@ -1,9 +1,12 @@
 <?php
 
+use App\Jobs\ImportVoterRegister;
 use App\Models\CoordinatorAgent;
 use App\Models\PollingUnit;
 use App\Models\User;
 use App\Models\Voter;
+use App\Models\VoterRegisterImport;
+use App\Services\RegisterImporter;
 use Database\Factories\MembershipFactory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Process\PendingProcess;
@@ -169,11 +172,14 @@ it('lets IT sign in and upload while refusing directory edit and staff administr
         'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
         'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
     ])->assertSessionHasNoErrors()->assertRedirect(route('voters.import.create'));
+    $import = VoterRegisterImport::latest('id')->firstOrFail();
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
     expect($unit->fresh()->register_uploaded_at)->not->toBeNull();
     expect($voter->fresh()->phone)->toBeNull();
     Process::assertRan(fn (PendingProcess $process): bool => $process->command[1] === base_path('scripts/extract-register.mjs'));
-    expect(Storage::disk('local')->allFiles())->toBe(['voters/private.jpg']);
-    expect(Storage::disk('local')->get('voters/private.jpg'))->toBe('private voter photo');
+    $photo = Voter::where('vin', 'AAAA BBBB CCCC DDDD 123')->firstOrFail()->photo_path;
+    expect(Storage::disk('local')->allFiles())->toBe([$photo]);
+    expect(Storage::disk('local')->get($photo))->toBe('private voter photo');
     Storage::disk('public')->assertMissing('voters/private.jpg');
 });
 

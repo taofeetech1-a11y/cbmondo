@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ImportVoterRegister;
 use App\Models\CoordinatorAgent;
 use App\Models\Lga;
 use App\Models\PollingUnit;
 use App\Models\Voter;
+use App\Models\VoterRegisterImport;
 use App\Models\Ward;
-use App\Services\RegisterImporter;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class VoterImportController extends Controller
@@ -21,16 +27,15 @@ class VoterImportController extends Controller
     public function create(Request $request): View
     {
         return view('voters.import', [
+            'imports' => $this->visibleImports($request)->with('pollingUnit', 'user:id,name')->latest('id')->paginate(10),
             'lgas' => Lga::orderBy('name')->get(),
             'wards' => Ward::where('lga_id', $request->old('lga'))->orderBy('name')->get(),
             'pollingUnits' => PollingUnit::where('ward_id', $request->old('ward'))->orderBy('name')->get(),
         ]);
     }
 
-    public function store(Request $request, RegisterImporter $importer): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        set_time_limit(max(300, (int) config('services.voter_import_timeout', 600)));
-
         $validated = $request->validate([
             'lga' => ['required', 'integer', 'exists:lgas,id'],
             'ward' => ['required', 'integer', Rule::exists('wards', 'id')->where('lga_id', $request->input('lga'))],
@@ -38,23 +43,93 @@ class VoterImportController extends Controller
             'pdf' => 'required|file|mimes:pdf|max:51200',
         ]);
 
-        $pollingUnit = PollingUnit::findOrFail($validated['polling_unit_id']);
-
         $storedPath = $request->file('pdf')
             ->store('register-imports', 'local');
-
-        $pdfPath = Storage::disk('local')
-            ->path($storedPath);
-
+        if (! $storedPath) {
+            throw ValidationException::withMessages(['pdf' => 'The file could not be stored. Please try again or contact support.']);
+        }
+        $lock = Cache::store('database')->lock('voter-import-enqueue', 30);
         try {
-            $count = $importer->import($pdfPath, $pollingUnit);
-
-            return redirect()
-                ->route($request->user()->role === 'it' ? 'voters.import.create' : 'voters.index')
-                ->with('status', "$count voters imported.");
+            $lock->block(3);
+            DB::transaction(function () use ($request, $validated, $storedPath): void {
+                PollingUnit::whereKey($validated['polling_unit_id'])->lockForUpdate()->firstOrFail();
+                $this->assertImportCapacity((int) $validated['polling_unit_id'], $request->user()->id);
+                $import = VoterRegisterImport::create([
+                    'user_id' => $request->user()->id, 'polling_unit_id' => $validated['polling_unit_id'],
+                    'original_name' => mb_substr($request->file('pdf')->getClientOriginalName(), 0, 255), 'pdf_path' => $storedPath,
+                ]);
+                ImportVoterRegister::dispatch($import->id)->beforeCommit();
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->delete($storedPath);
+            if ($exception instanceof LockTimeoutException) {
+                throw ValidationException::withMessages(['pdf' => 'Uploads are busy. Please wait a moment and try again.']);
+            }
+            if ($exception instanceof ValidationException) {
+                throw $exception;
+            }
+            report($exception);
+            throw ValidationException::withMessages(['pdf' => 'The upload could not be queued. Please try again in a moment or contact support.']);
         } finally {
-            Storage::disk('local')
-                ->delete($storedPath);
+            $lock->release();
+        }
+
+        return redirect()->route('voters.import.create')->with('status', 'PDF uploaded and queued. You can upload another register while this one processes.');
+    }
+
+    public function importStatus(Request $request): JsonResponse
+    {
+        $imports = $this->visibleImports($request)->latest('id')->paginate(10)->through(fn (VoterRegisterImport $import): array => [
+            'id' => $import->id, 'status' => $import->status, 'voters_count' => $import->voters_count,
+            'error' => $import->error_message, 'can_retry' => $import->status === 'failed' && $import->pdf_path !== null,
+        ]);
+
+        return response()->json(['imports' => $imports->items()]);
+    }
+
+    public function retryImport(Request $request, VoterRegisterImport $import): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'super_admin' || $import->user_id === $request->user()->id, 404);
+        $lock = Cache::store('database')->lock('voter-import-enqueue', 30);
+        try {
+            $lock->block(3);
+            DB::transaction(function () use ($import): void {
+                PollingUnit::whereKey($import->polling_unit_id)->lockForUpdate()->firstOrFail();
+                $record = VoterRegisterImport::whereKey($import->id)->lockForUpdate()->firstOrFail();
+                if ($record->status !== 'failed' || ! $record->pdf_path || ! Storage::disk('local')->exists($record->pdf_path)) {
+                    throw ValidationException::withMessages(['pdf' => 'This import cannot be retried. If its source has expired, upload the PDF again.']);
+                }
+                if (! $record->user?->hasPermission('import-voters')) {
+                    throw ValidationException::withMessages(['pdf' => 'The uploader no longer has import access. Upload the PDF again using an active IT or super-admin account.']);
+                }
+                $this->assertImportCapacity($record->polling_unit_id, $record->user_id);
+                $record->update(['status' => 'queued', 'error_message' => null, 'finished_at' => null]);
+                ImportVoterRegister::dispatch($record->id)->beforeCommit();
+            });
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['pdf' => 'Uploads are busy. Please wait a moment and try again.']);
+        } finally {
+            $lock->release();
+        }
+
+        return redirect()->route('voters.import.create')->with('status', 'Import queued for another attempt.');
+    }
+
+    private function visibleImports(Request $request): Builder
+    {
+        return VoterRegisterImport::query()->when($request->user()->role !== 'super_admin', fn (Builder $query) => $query->where('user_id', $request->user()->id));
+    }
+
+    private function assertImportCapacity(int $unitId, int $userId): void
+    {
+        if (VoterRegisterImport::where('polling_unit_id', $unitId)->whereIn('status', ['queued', 'processing'])->exists()) {
+            throw ValidationException::withMessages(['polling_unit_id' => 'This polling unit already has an import queued or processing. Wait for it to finish before uploading again.']);
+        }
+        if (VoterRegisterImport::whereIn('status', ['queued', 'processing'])->count() >= max(1, (int) config('voter-imports.max_pending'))) {
+            throw ValidationException::withMessages(['pdf' => 'The import queue is full. Wait for some imports to finish, then upload again.']);
+        }
+        if (VoterRegisterImport::where('user_id', $userId)->whereIn('status', ['queued', 'processing'])->count() >= max(1, (int) config('voter-imports.max_pending_per_user'))) {
+            throw ValidationException::withMessages(['pdf' => 'You already have the maximum number of pending imports. Wait for one to finish before uploading another PDF.']);
         }
     }
 

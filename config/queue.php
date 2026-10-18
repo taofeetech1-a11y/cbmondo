@@ -31,6 +31,15 @@ return [
 
     'connections' => [
 
+        'voter-imports' => [
+            'driver' => 'database',
+            'connection' => null,
+            'table' => 'jobs',
+            'queue' => 'voter-imports',
+            'retry_after' => 900,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

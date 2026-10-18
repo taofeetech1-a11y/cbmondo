@@ -1,22 +1,38 @@
 <?php
 
+use App\Jobs\ImportVoterRegister;
 use App\Models\PollingUnit;
 use App\Models\User;
 use App\Models\Voter;
+use App\Models\VoterRegisterImport;
 use App\Models\Ward;
+use App\Services\RegisterImporter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
-it('extends the web request time budget before processing a PDF import', function () {
+beforeEach(function () {
+    Queue::fake();
+});
+
+function finishLatestVoterImport(): VoterRegisterImport
+{
+    $import = VoterRegisterImport::latest('id')->firstOrFail();
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+    return $import->fresh();
+}
+
+it('queues extraction outside the web request and gives the worker a bounded time budget', function () {
     $originalLimit = (int) ini_get('max_execution_time');
     config(['services.voter_import_timeout' => 600]);
     $unit = PollingUnit::factory()->create();
     Storage::fake('local');
     Process::fake(function (PendingProcess $process) {
-        expect((int) ini_get('max_execution_time'))->toBe(600);
+        expect((int) ini_get('max_execution_time'))->toBe(660);
         File::put($process->command[3].'/records.json', json_encode([
             'header' => null, 'expected' => 0, 'records' => [],
         ], JSON_THROW_ON_ERROR));
@@ -30,7 +46,11 @@ it('extends the web request time budget before processing a PDF import', functio
             ->post(route('voters.import'), [
                 'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
                 'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
-            ])->assertSessionHasNoErrors()->assertRedirect(route('voters.index'));
+            ])->assertSessionHasNoErrors()->assertRedirect(route('voters.import.create'));
+
+        Process::assertNothingRan();
+        expect((int) ini_get('max_execution_time'))->toBe(30);
+        finishLatestVoterImport();
 
         expect($unit->fresh()->register_uploaded_at)->not->toBeNull();
         Process::assertRan(fn (PendingProcess $process): bool => $process->command[1] === base_path('scripts/extract-register.mjs'));
@@ -142,8 +162,8 @@ it('links imported and reimported voters to the selected polling unit', function
             'ward' => $unit->ward_id,
             'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
-        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.index'))
-            ->assertSessionHas('status', '1 voters imported.');
+        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.import.create'));
+        finishLatestVoterImport();
         if ($attempt === 0) {
             Voter::sole()->update(['phone' => '08012345678']);
         }
@@ -173,12 +193,13 @@ it('does not mark a polling unit uploaded when extraction fails', function () {
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
-        ])->assertStatus(500);
+        ])->assertRedirect(route('voters.import.create'));
+    expect(finishLatestVoterImport()->status)->toBe('failed');
 
     expect($unit->fresh()->register_uploaded_at)->toBeNull();
     $this->assertDatabaseCount('voters', 0);
     Process::assertRan(fn (PendingProcess $process): bool => $process->command[1] === base_path('scripts/extract-register.mjs'));
-    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+    expect(Storage::disk('local')->files('register-imports'))->toHaveCount(1);
 });
 
 it('marks a successfully imported empty register as uploaded', function () {
@@ -197,7 +218,8 @@ it('marks a successfully imported empty register as uploaded', function () {
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
-        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.index'));
+        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.import.create'));
+    finishLatestVoterImport();
 
     expect($unit->fresh()->register_uploaded_at)->not->toBeNull();
     $this->assertDatabaseCount('voters', 0);
@@ -225,7 +247,8 @@ it('uses the selected location when the PDF has no recognizable header', functio
         ->post(route('voters.import'), [
             'lga' => $unit->ward->lga_id, 'ward' => $unit->ward_id, 'polling_unit_id' => $unit->id,
             'pdf' => UploadedFile::fake()->create('register.pdf', 1, 'application/pdf'),
-        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.index'));
+        ])->assertSessionHasNoErrors()->assertRedirect(route('voters.import.create'));
+    finishLatestVoterImport();
 
     $this->assertDatabaseHas('voters', [
         'vin' => 'AAAA BBBB CCCC DDDD 123', 'polling_unit_id' => $unit->id,

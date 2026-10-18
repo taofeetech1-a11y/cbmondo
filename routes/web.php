@@ -109,5 +109,7 @@ Route::middleware(['auth:web,coordinator', EnsureAccountAccess::class, 'auth.ses
 
 Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::class, 'auth.session', 'can:import-voters'])->group(function () {
     Route::get('/voters/import', [VoterImportController::class, 'create'])->name('voters.import.create');
-    Route::post('/voters/import', [VoterImportController::class, 'store'])->name('voters.import');
+    Route::post('/voters/import', [VoterImportController::class, 'store'])->middleware('throttle:10,1')->name('voters.import');
+    Route::get('/voters/imports/status', [VoterImportController::class, 'importStatus'])->name('voters.imports.status');
+    Route::post('/voters/imports/{import}/retry', [VoterImportController::class, 'retryImport'])->middleware('throttle:10,1')->name('voters.imports.retry');
 });

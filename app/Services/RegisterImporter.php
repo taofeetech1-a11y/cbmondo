@@ -4,197 +4,124 @@ namespace App\Services;
 
 use App\Models\PollingUnit;
 use App\Models\Voter;
+use App\Models\VoterRegisterImport;
 use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class RegisterImporter
 {
-    // public function import(string $pdfPath): int
-    // {
-    //     $work = storage_path('app/tmp/' . Str::uuid());
-    //     File::makeDirectory($work, 0755, true);
-
-    //     try {
-
-    //         $result = Process::path(base_path())
-    //             ->timeout(300)
-    //             ->run([
-    //                 config('services.node'),
-    //                 base_path('scripts/extract-register.mjs'),
-    //                 $pdfPath,
-    //                 $work,
-    //             ]);
-
-    //         if ($result->failed()) {
-    //             throw new RuntimeException('Extraction failed: ' . $result->errorOutput());
-    //         }
-    //         if ($result->errorOutput()) {
-    //             Log::warning('Register extraction warnings: ' . $result->errorOutput());
-    //         }
-
-    //         $data    = json_decode(File::get("$work/records.json"), true);
-    //         $header  = $data['header'];
-    //         $records = $data['records'];
-
-    //         if ($data['expected'] && count($records) !== $data['expected']) {
-    //             throw new RuntimeException(
-    //                 "Expected {$data['expected']} records but parsed " . count($records)
-    //             );
-    //         }
-
-    //         DB::transaction(function () use ($records, $header, $work) {
-    //             foreach ($records as $r) {
-    //                 $photoPath = null;
-    //                 if ($r['photo']) {
-    //                     $photoPath = Storage::disk('public')->putFileAs(
-    //                         'voters',
-    //                         new HttpFile("$work/{$r['photo']}"),
-    //                         $r['photo']
-    //                     );
-    //                 }
-
-    //                 Voter::updateOrCreate(['vin' => $r['vin']], [
-    //                     'serial'            => $r['serial'],
-    //                     'full_name'         => $r['full_name'],
-    //                     'surname'           => $r['surname'],
-    //                     'other_names'       => $r['other_names'],
-    //                     'occupation'        => $r['occupation'],
-    //                     'gender'            => $r['gender'],
-    //                     'age'               => $r['age'],
-    //                     'photo_path'        => $photoPath,
-    //                     'state'             => $header['state'],
-    //                     'lga'               => $header['lga'],
-    //                     'registration_area' => $header['registration_area'],
-    //                     'polling_unit'      => $header['polling_unit'],
-    //                 ]);
-    //             }
-    //         });
-
-    //         return count($records);
-    //     } finally {
-    //         File::deleteDirectory($work);
-    //     }
-    // }
-
-    public function import(string $pdfPath, PollingUnit $pollingUnit): int
+    public function import(string $pdfPath, PollingUnit $pollingUnit, ?int $importId = null): int
     {
-        $work = storage_path('app/tmp/'.Str::uuid());
+        $work = storage_path('app/tmp/voter-import-'.Str::uuid());
+        $photoDirectory = 'voters/'.Str::uuid();
         File::makeDirectory($work, 0755, true);
-
+        $committed = false;
+        $oldPhotos = [];
         try {
-
-            $node = config('services.node', 'node');
             $script = base_path('scripts/extract-register.mjs');
-
-            // Check that the JavaScript file exists
-            if (! File::isFile($script)) {
-                throw new RuntimeException(
-                    "Extraction script not found: {$script}"
-                );
+            if (! File::isFile($script) || ! File::isFile($pdfPath)) {
+                throw new RuntimeException('The extraction script or source PDF is missing.');
             }
-
-            // Check that the PDF exists
-            if (! File::isFile($pdfPath)) {
-                throw new RuntimeException(
-                    "PDF file not found: {$pdfPath}"
-                );
-            }
-
-            // Run the Node.js extraction script
-            try {
-                $result = Process::path(base_path())
-                    ->timeout(300)
-                    ->run([
-                        $node,
-                        $script,
-                        $pdfPath,
-                        $work,
-                    ]);
-            } catch (\Throwable $e) {
-                throw new RuntimeException(
-                    'Unable to start Node.js: '.$e->getMessage(),
-                    0,
-                    $e
-                );
-            }
-
-            // Show detailed error if extraction fails
+            $result = Process::path(base_path())->env([
+                'NODE_OPTIONS' => trim((string) getenv('NODE_OPTIONS')).' --max-old-space-size='.max(128, (int) config('voter-imports.node_memory_mb', 256)),
+                'UV_THREADPOOL_SIZE' => '1',
+            ])->timeout(300)->run([config('services.node', 'node'), $script, $pdfPath, $work]);
             if ($result->failed()) {
-                throw new RuntimeException(
-                    'Extraction failed (exit code '
-                        .$result->exitCode()
-                        .'): '
-                        .$result->errorOutput()
-                        ."\n"
-                        .$result->output()
-                );
+                throw new RuntimeException('Extraction failed (exit code '.$result->exitCode().'): '.$result->errorOutput());
             }
-
-            // Check that the JSON output was created
-            if (! File::isFile("$work/records.json")) {
-                throw new RuntimeException(
-                    'Extraction completed but records.json was not created.'
-                );
+            if (! File::isFile($work.'/records.json')) {
+                throw new RuntimeException('Extraction completed without a records file.');
             }
             if ($result->errorOutput()) {
-                Log::warning('Register extraction warnings: '.$result->errorOutput());
+                Log::warning('Register extraction warnings', ['import_id' => $importId, 'warnings' => $result->errorOutput()]);
             }
-
-            $data = json_decode(File::get("$work/records.json"), true);
+            $data = json_decode(File::get($work.'/records.json'), true, 512, JSON_THROW_ON_ERROR);
+            Validator::make($data, [
+                'expected' => ['present', 'nullable', 'integer', 'min:0'],
+                'records' => ['present', 'array'],
+                'records.*.vin' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
+                'records.*.full_name' => ['required', 'string', 'max:255'],
+                'records.*.surname' => ['required', 'string', 'max:255'],
+                'records.*.other_names' => ['nullable', 'string', 'max:255'],
+                'records.*.occupation' => ['nullable', 'string', 'max:255'],
+                'records.*.gender' => ['required', 'in:Male,Female'],
+                'records.*.age' => ['required', 'integer', 'between:0,255'],
+                'records.*.serial' => ['required', 'integer', 'min:1'],
+                'records.*.photo' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/i'],
+            ])->validate();
+            $records = $data['records'];
+            if ($data['expected'] !== null && count($records) !== $data['expected']) {
+                throw new RuntimeException('The extracted voter count does not match the PDF total.');
+            }
             $pollingUnit->loadMissing('ward.lga');
             $header = $data['header'] ?? [
-                'state' => null,
-                'lga' => $pollingUnit->ward->lga->name,
-                'registration_area' => $pollingUnit->ward->name,
-                'polling_unit' => $pollingUnit->name,
+                'state' => null, 'lga' => $pollingUnit->ward->lga->name,
+                'registration_area' => $pollingUnit->ward->name, 'polling_unit' => $pollingUnit->name,
             ];
-            $records = $data['records'];
-
-            if ($data['expected'] !== null && count($records) !== $data['expected']) {
-                throw new RuntimeException(
-                    "Expected {$data['expected']} records but parsed ".count($records)
-                );
-            }
-
-            DB::transaction(function () use ($records, $header, $work, $pollingUnit) {
-                foreach ($records as $r) {
-                    $photoPath = null;
-                    if ($r['photo']) {
-                        $photoPath = Storage::disk('local')->putFileAs(
-                            'voters',
-                            new HttpFile("$work/{$r['photo']}"),
-                            $r['photo']
-                        );
+            $rows = [];
+            foreach ($records as $record) {
+                $photoPath = null;
+                if ($record['photo'] ?? null) {
+                    $photoPath = Storage::disk('local')->putFileAs($photoDirectory, new HttpFile($work.'/'.$record['photo']), $record['photo']);
+                    if (! $photoPath) {
+                        throw new RuntimeException('There is not enough storage to save the extracted photos.');
                     }
-
-                    Voter::updateOrCreate(['vin' => $r['vin']], [
-                        'serial' => $r['serial'],
-                        'full_name' => $r['full_name'],
-                        'surname' => $r['surname'],
-                        'other_names' => $r['other_names'],
-                        'occupation' => $r['occupation'],
-                        'gender' => $r['gender'],
-                        'age' => $r['age'],
-                        'photo_path' => $photoPath,
-                        'state' => $header['state'],
-                        'lga' => $header['lga'],
-                        'registration_area' => $header['registration_area'],
-                        'polling_unit' => $header['polling_unit'],
-                        'polling_unit_id' => $pollingUnit->id,
+                }
+                $rows[] = [
+                    'vin' => $record['vin'], 'serial' => $record['serial'], 'full_name' => $record['full_name'],
+                    'surname' => $record['surname'], 'other_names' => $record['other_names'] ?? null,
+                    'occupation' => $record['occupation'] ?? null, 'gender' => $record['gender'], 'age' => $record['age'],
+                    'photo_path' => $photoPath, 'state' => $header['state'] ?? null, 'lga' => $header['lga'] ?? null,
+                    'registration_area' => $header['registration_area'] ?? null, 'polling_unit' => $header['polling_unit'] ?? null,
+                    'polling_unit_id' => $pollingUnit->id, 'created_at' => now(), 'updated_at' => now(),
+                ];
+            }
+            usort($rows, fn (array $left, array $right): int => strcmp($left['vin'], $right['vin']));
+            DB::transaction(function () use ($rows, $pollingUnit, $importId, $photoDirectory, &$oldPhotos): void {
+                PollingUnit::whereKey($pollingUnit->id)->lockForUpdate()->firstOrFail();
+                foreach (array_chunk($rows, 200) as $batch) {
+                    Voter::insertOrIgnore($batch);
+                    $existing = Voter::whereIn('vin', array_column($batch, 'vin'))->orderBy('vin')->lockForUpdate()->get();
+                    foreach ($existing as $voter) {
+                        if ($voter->polling_unit_id !== null && (int) $voter->polling_unit_id !== (int) $pollingUnit->id) {
+                            throw new RuntimeException('A VIN in this PDF is already assigned to another polling unit. Check the selected unit.');
+                        }
+                        if ($voter->photo_path && ! str_starts_with($voter->photo_path, $photoDirectory.'/')) {
+                            $oldPhotos[] = $voter->photo_path;
+                        }
+                    }
+                    Voter::upsert($batch, ['vin'], [
+                        'serial', 'full_name', 'surname', 'other_names', 'occupation', 'gender', 'age',
+                        'photo_path', 'state', 'lga', 'registration_area', 'polling_unit', 'polling_unit_id', 'updated_at',
                     ]);
                 }
+                $pollingUnit->forceFill(['register_uploaded_at' => now()])->save();
+                if ($importId !== null) {
+                    VoterRegisterImport::whereKey($importId)->update([
+                        'status' => 'completed', 'voters_count' => count($rows), 'finished_at' => now(),
+                    ]);
+                }
+            }, 3);
+            $committed = true;
+            foreach (array_chunk(array_values(array_unique($oldPhotos)), 200) as $paths) {
+                $referenced = Voter::whereIn('photo_path', $paths)->pluck('photo_path')->all();
+                Storage::disk('local')->delete(array_values(array_filter(array_diff($paths, $referenced), fn (string $path): bool => str_starts_with($path, 'voters/'))));
+            }
 
-                $pollingUnit->register_uploaded_at = now();
-                $pollingUnit->save();
-            });
-
-            return count($records);
+            return count($rows);
+        } catch (Throwable $exception) {
+            if (! $committed) {
+                Storage::disk('local')->deleteDirectory($photoDirectory);
+            }
+            throw $exception;
         } finally {
             File::deleteDirectory($work);
         }

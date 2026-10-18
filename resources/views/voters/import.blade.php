@@ -54,15 +54,31 @@
         </div>
         @error('pdf') <p class="field-error" role="alert">{{ $message }}</p> @enderror
     </fieldset>
-    <div class="voter-form-footer"><span>Check the location before importing.</span><button class="btn btn-primary" type="submit">Upload & import →</button></div>
+    <div class="voter-form-footer"><span>Check the location before importing.</span><button class="btn btn-primary" type="submit">Upload & queue →</button></div>
 </form>
 <aside class="voter-import-aside">
     <section class="panel voter-guide"><span class="eyebrow">BEFORE YOU UPLOAD</span><h2>A quick check</h2>
         <ol><li><b>Match the location</b><p>Check that the LGA, ward and polling unit match the register you are uploading.</p></li><li><b>Use one PDF per unit</b><p>Each polling unit has its own register. Upload its PDF separately.</p></li><li><b>Review the directory</b><p>After extraction, your imported voter records appear in the voter directory.</p></li></ol>
     </section>
-    <div class="voter-import-note"><b>Already imported this register?</b><p>Matching voter identification numbers update existing records instead of creating duplicates.</p></div>
+    <div class="voter-import-note"><b>Already imported this register?</b><p>Reimporting the same polling unit updates its records while preserving collected phone numbers and coordinator credit.</p></div>
 </aside>
 </div>
+<section class="panel import-history" aria-label="PDF import history" data-import-history data-status-url="{{ route('voters.imports.status', ['page' => request('page', 1)]) }}">
+    <div class="voter-results-heading"><h2>{{ auth()->user()->role === 'super_admin' ? 'Recent imports' : 'Your recent imports' }}</h2><span>Processing continues after you leave this page</span></div>
+    <p class="voter-help">PDFs are processed one at a time to protect server resources. You can have up to {{ config('voter-imports.max_pending_per_user') }} pending imports. Status updates automatically while this page is open. Failed source PDFs are retained privately for {{ config('voter-imports.retention_days') }} days so you can retry.</p>
+    <p class="voter-help" data-import-refresh-status role="status" aria-live="polite"></p>
+    @forelse($imports as $import)
+        <article class="import-history-row" data-import-id="{{ $import->id }}" data-import-status="{{ $import->status }}">
+            <div><strong>#{{ $import->id }} · {{ $import->pollingUnit->name }}</strong><p>{{ $import->original_name }} · {{ $import->created_at->format('d M Y, H:i') }}@if(auth()->user()->role === 'super_admin') · {{ $import->user?->name ?? 'Former staff member' }}@endif</p></div>
+            <div class="import-history-result"><span class="voter-status-badge" data-import-label>{{ ucfirst($import->status) }}</span><span data-import-count>{{ $import->voters_count !== null ? number_format($import->voters_count).' voters' : '' }}</span></div>
+            <p class="field-error" data-import-error>{{ $import->error_message }}</p>
+            <form method="POST" action="{{ route('voters.imports.retry', $import) }}" data-import-retry @if($import->status !== 'failed' || !$import->pdf_path) hidden @endif>@csrf<button class="btn btn-outline" type="submit">Retry import</button></form>
+        </article>
+    @empty
+        <p class="voter-help">No imports yet. Your uploads and their results will appear here.</p>
+    @endforelse
+    {{ $imports->links('pagination::simple-bootstrap-4') }}
+</section>
 @endsection
 @push('scripts')
 <script src="{{ asset('js/voter-import.js') }}" defer></script>
