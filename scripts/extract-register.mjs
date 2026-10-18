@@ -118,29 +118,32 @@ for (let p = 1; p <= doc.numPages; p++) {
     if (recs.length === 0) continue;
     const photos = await findPhotos(page, mid);
 
-    if (!parsed.labelled && recs.length !== photos.length) {
-      problems.push(`Page ${p}: ${recs.length} records but ${photos.length} photos; refusing to guess`);
-      continue;
-    }
-
     const usedPhotos = new Set();
     for (let i = 0; i < recs.length; i++) {
       const r = recs[i];
-      let photo;
-      try {
-        photo = parsed.labelled ? matchLabelledPhoto(r, photos, usedPhotos) : photos[i];
-      } catch (error) {
-        problems.push(`Page ${p}: ${error.message}`);
-        continue;
+      let photo = parsed.labelled ? matchLabelledPhoto(r, photos, usedPhotos) : null;
+      if (!parsed.labelled) {
+        const candidates = photos.filter((candidate) => !usedPhotos.has(candidate)
+          && candidate.column === r.column && Math.abs(candidate.y - r.y) <= 30);
+        if (candidates.length === 1) {
+          photo = candidates[0];
+          usedPhotos.add(photo);
+        }
       }
-      if (Math.abs(photo.y - r.y) > 70) {
-        problems.push(`Page ${p}: photo ${i + 1} is not level with its record (${r.vin})`);
+      let file = null;
+      if (photo) {
+        const filename = `page-${p}-record-${i + 1}.jpg`;
+        try {
+          await savePhoto(page, photo.id, path.join(outDir, filename));
+          file = filename;
+        } catch (error) {
+          console.error(`Page ${p}: record ${r.serial ?? i + 1}: photo unavailable; storing NULL. ${error.message}`);
+        }
       }
-      const file = `${r.vin.replace(/ /g, '')}.jpg`;
-      await savePhoto(page, photo.id, path.join(outDir, file));
 
       records.push({
-        serial: r.serial ?? records.length + 1,
+        serial: r.serial ?? null,
+        source_key: `page:${p}:record:${i + 1}`,
         vin: r.vin,
         full_name: r.full_name,
         surname: r.surname,

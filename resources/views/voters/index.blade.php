@@ -89,18 +89,19 @@
 <div class="voter-results-heading"><h2>{{ isset($assignedUnit) ? 'Voters awaiting phone numbers' : 'Registered voters' }}</h2><span>{{ $voters->total() ? number_format($voters->firstItem()).'–'.number_format($voters->lastItem()).' of '.number_format($voters->total()) : (isset($assignedUnit) ? 'No records remaining' : 'No records yet') }}</span></div>
 <div class="voter-grid">
     @forelse ($voters as $voter)
+        @php($voterName = $voter->full_name ?: 'Name not recorded')
         <article class="voter-card">
             <div class="voter-card-heading">
                 @if ($voter->photo_path)
-                    <img class="voter-portrait" src="{{ route('voters.photo', $voter) }}" alt="Photo of {{ $voter->full_name }}" loading="lazy" width="64" height="80">
+                    <img class="voter-portrait" src="{{ route('voters.photo', $voter) }}" alt="Photo of {{ $voterName }}" loading="lazy" width="64" height="80">
                 @else
-                    <div class="voter-portrait voter-initial" aria-label="No photo available">{{ mb_strtoupper(mb_substr($voter->full_name, 0, 1)) }}</div>
+                    <div class="voter-portrait voter-initial" aria-label="No photo available">{{ $voter->full_name ? mb_strtoupper(mb_substr($voter->full_name, 0, 1)) : '?' }}</div>
                 @endif
-                <div class="voter-identity"><span class="voter-serial">{{ $voter->pollingUnit?->delimitation_code ?: 'Delimitation code not recorded' }}</span><h3>{{ $voter->full_name }}</h3>@unless(isset($assignedUnit))<span class="voter-demographic">{{ $voter->gender }} · {{ $voter->age }} years</span>@endunless</div>
+                <div class="voter-identity"><span class="voter-serial">{{ $voter->pollingUnit?->delimitation_code ?: 'Delimitation code not recorded' }}</span><h3>{{ $voterName }}</h3>@unless(isset($assignedUnit))<span class="voter-demographic">{{ $voter->gender ?: 'Gender not recorded' }} · {{ $voter->age !== null ? $voter->age.' years' : 'Age not recorded' }}</span>@endunless</div>
             </div>
             <dl class="voter-details">
                 @unless(isset($assignedUnit))
-                <div class="voter-vin"><dt>Voter identification number</dt><dd>{{ $voter->vin }}</dd></div>
+                <div class="voter-vin"><dt>Voter identification number</dt><dd>{{ $voter->vin ?: 'Not recorded' }}</dd></div>
                 <div><dt>Occupation</dt><dd>{{ $voter->occupation ?: 'Not recorded' }}</dd></div>
                 <div><dt>Phone number</dt><dd>{{ $voter->phone ?: 'Not recorded' }}</dd></div>
                 @if($voter->phone_added_at)
@@ -109,7 +110,7 @@
                 @endunless
                 <div class="voter-location"><dt>Polling unit · PDF register</dt><dd>{{ $voter->polling_unit ?: 'Not recorded' }}</dd></div>
             </dl>
-            <div class="voter-card-actions"><a class="btn btn-outline" href="{{ route('voters.edit', $voter) }}" aria-label="{{ isset($assignedUnit) ? 'Add phone number for' : 'Edit' }} {{ $voter->full_name }}">{{ isset($assignedUnit) ? 'Add phone number →' : 'Edit voter →' }}</a></div>
+            <div class="voter-card-actions"><a class="btn btn-outline" href="{{ route('voters.edit', $voter) }}" aria-label="{{ isset($assignedUnit) ? 'Add phone number for' : 'Edit' }} {{ $voterName }}">{{ isset($assignedUnit) ? 'Add phone number →' : 'Edit voter →' }}</a></div>
         </article>
     @empty
         <section class="panel voter-empty"><span class="voter-symbol" aria-hidden="true">▤</span><h2>{{ isset($assignedUnit) ? 'No voters awaiting phone numbers' : 'No voters found' }}</h2><p>{{ isset($assignedUnit) ? 'There are no voters awaiting a phone number in this list.' : 'No voter records match your current location and search.' }}</p>@can('import-voters')<a class="btn btn-primary" href="{{ route('voters.import') }}">Import a register</a>@endcan</section>

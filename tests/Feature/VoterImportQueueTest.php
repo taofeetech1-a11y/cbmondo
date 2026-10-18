@@ -32,7 +32,7 @@ function fakeQueuedExtraction(array $records): void
 {
     Process::fake(function (PendingProcess $process) use ($records) {
         foreach ($records as $record) {
-            if ($record['photo']) {
+            if ($record['photo'] ?? null) {
                 File::put($process->command[3].'/'.$record['photo'], 'private photo');
             }
         }
@@ -199,6 +199,81 @@ it('does not transfer existing VINs between units or leave partial rows and phot
     expect(Storage::disk('local')->allFiles())->toBe([$import->pdf_path]);
 });
 
+it('imports incomplete voters as null and reimports without losing phone collection credit', function () {
+    Storage::fake('local');
+    $unit = PollingUnit::factory()->create();
+    $staff = User::factory()->create(['role' => 'it']);
+    $collector = CoordinatorAgent::factory()->create();
+    $records = [
+        ['source_key' => 'page:12:record:1', 'vin' => null, 'serial' => 386, 'photo' => null],
+        ['source_key' => 'page:15:record:1', 'vin' => null, 'serial' => null, 'photo' => null],
+    ];
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id, 'user_id' => $staff->id]);
+        Storage::disk('local')->put($import->pdf_path, 'pdf');
+        fakeQueuedExtraction($records);
+
+        (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+        expect($import->fresh()->status)->toBe('completed');
+        expect($import->fresh()->voters_count)->toBe(2);
+        $this->assertDatabaseCount('voters', 2);
+        if ($attempt === 0) {
+            $voter = Voter::orderBy('id')->first();
+            $this->assertDatabaseHas('voters', ['id' => $voter->id, 'vin' => null, 'full_name' => null,
+                'surname' => null, 'other_names' => null, 'gender' => null, 'age' => null, 'occupation' => null, 'photo_path' => null]);
+            $voter->forceFill(['phone' => '08012345678', 'phone_added_by' => $collector->id, 'phone_added_at' => now()])->save();
+            $records[0]['vin'] = '90F5AF7A59466848074';
+            $records[0]['full_name'] = 'Recovered Name';
+        }
+    }
+    $this->assertDatabaseHas('voters', ['id' => $voter->id, 'vin' => '90F5AF7A59466848074',
+        'full_name' => 'Recovered Name', 'phone' => '08012345678', 'phone_added_by' => $collector->id]);
+    expect($voter->fresh()->phone_added_at)->not->toBeNull();
+    $this->assertDatabaseHas('voters', ['polling_unit_id' => $unit->id, 'vin' => null, 'serial' => null]);
+});
+
+it('keeps voters without VINs separate across polling units even at the same PDF position', function () {
+    Storage::fake('local');
+    foreach (PollingUnit::factory()->count(2)->create() as $unit) {
+        $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id]);
+        Storage::disk('local')->put($import->pdf_path, 'pdf');
+        fakeQueuedExtraction([['source_key' => 'page:1:record:1']]);
+
+        (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+        expect($import->fresh()->status)->toBe('completed');
+        $this->assertDatabaseHas('voters', ['polling_unit_id' => $unit->id, 'vin' => null]);
+    }
+    $this->assertDatabaseCount('voters', 2);
+});
+
+it('does not replace a different identified voter occupying the same source position', function () {
+    Storage::fake('local');
+    $unit = PollingUnit::factory()->create();
+    foreach (['90F5AF7A59466848074', 'INC22000000012524244'] as $index => $vin) {
+        $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id]);
+        Storage::disk('local')->put($import->pdf_path, 'pdf');
+        fakeQueuedExtraction([queuedVoterRecord($vin)]);
+
+        (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+        expect($import->fresh()->status)->toBe($index === 0 ? 'completed' : 'failed');
+    }
+    $this->assertDatabaseCount('voters', 1);
+    $this->assertDatabaseHas('voters', ['vin' => '90F5AF7A59466848074']);
+});
+
+it('renders incomplete voter names and demographics without inventing personal information', function () {
+    $voter = Voter::factory()->for(PollingUnit::factory(), 'pollingUnit')->create([
+        'vin' => null, 'full_name' => null, 'surname' => null, 'gender' => null, 'age' => null, 'photo_path' => null,
+    ]);
+
+    $this->actingAs(User::factory()->superAdmin()->create(), 'web')->get(route('voters.index'))
+        ->assertOk()->assertSee('Name not recorded')->assertSee('Age not recorded')->assertSee('Gender not recorded');
+    $this->get(route('voters.edit', $voter))->assertOk()->assertSee('Name not recorded');
+});
+
 it('isolates photo paths between PDFs and preserves collected phones and completion credit on reimport', function () {
     Storage::fake('local');
     $first = VoterRegisterImport::factory()->create();
@@ -261,7 +336,12 @@ it('imports a supplied sample PDF through the real worker and stores its photos 
     expect($import->status)->toBe('completed');
     expect($import->voters_count)->toBeGreaterThan(0);
     expect(Voter::count())->toBe($import->voters_count);
+    if (getenv('VOTER_IMPORT_SAMPLE_EXPECT_MISSING_VIN')) {
+        expect(Voter::whereNull('vin')->exists())->toBeTrue();
+    }
     foreach (Voter::all() as $voter) {
-        Storage::disk('local')->assertExists($voter->photo_path);
+        if ($voter->photo_path !== null) {
+            Storage::disk('local')->assertExists($voter->photo_path);
+        }
     }
 })->skip(! getenv('VOTER_IMPORT_SAMPLE_PDF'), 'Set VOTER_IMPORT_SAMPLE_PDF to run real PDF extraction.');

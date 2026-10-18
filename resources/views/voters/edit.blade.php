@@ -2,8 +2,9 @@
 @section('title', 'Edit voter — CBM Ondo')
 @section('voter-content')
 @php($isCoordinator = auth()->user() instanceof \App\Models\CoordinatorAgent)
+@php($voterName = $voter->full_name ?: 'Name not recorded')
 <div class="page-head voter-page-head">
-    <div><span class="eyebrow">VOTER DETAILS</span><h1>{{ $isCoordinator ? 'Add phone number' : 'Edit voter' }}</h1><p>{{ $voter->full_name }}</p></div>
+    <div><span class="eyebrow">VOTER DETAILS</span><h1>{{ $isCoordinator ? 'Add phone number' : 'Edit voter' }}</h1><p>{{ $voterName }}</p></div>
     <a class="btn btn-outline" href="{{ route(auth()->user() instanceof \App\Models\CoordinatorAgent ? 'coordinator.dashboard' : 'voters.index') }}">← Voter directory</a>
 </div>
 @if ($errors->any())
@@ -14,10 +15,10 @@
     @method('PATCH')
     <h2>{{ $isCoordinator ? 'Confirm voter and add phone number' : 'Personal details' }}</h2>
     @if($isCoordinator)
-        <p class="voter-help">Adding a phone number for <strong>{{ $voter->full_name }}</strong>.</p>
+        <p class="voter-help">Adding a phone number for <strong>{{ $voterName }}</strong>.</p>
     @endif
     @if($isCoordinator && $voter->photo_path)
-        <img class="voter-portrait" src="{{ route('voters.photo', $voter) }}" alt="Photo of {{ $voter->full_name }}" width="64" height="80">
+        <img class="voter-portrait" src="{{ route('voters.photo', $voter) }}" alt="Photo of {{ $voterName }}" width="64" height="80">
     @endif
     <div class="voter-edit-fields">
     @foreach (($isCoordinator ? ['phone' => 'Phone number'] : ['full_name' => 'Full name', 'surname' => 'Surname', 'other_names' => 'Other names', 'vin' => 'Voter identification number', 'occupation' => 'Occupation', 'phone' => 'Phone number']) as $field => $label)

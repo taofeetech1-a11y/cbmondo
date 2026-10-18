@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PollingUnit;
 use App\Models\Voter;
 use App\Models\VoterRegisterImport;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -47,14 +48,15 @@ class RegisterImporter
             Validator::make($data, [
                 'expected' => ['present', 'nullable', 'integer', 'min:0'],
                 'records' => ['present', 'array'],
-                'records.*.vin' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
-                'records.*.full_name' => ['required', 'string', 'max:255'],
-                'records.*.surname' => ['required', 'string', 'max:255'],
+                'records.*.vin' => ['nullable', 'string', 'max:255', 'distinct:ignore_case'],
+                'records.*.full_name' => ['nullable', 'string', 'max:255'],
+                'records.*.surname' => ['nullable', 'string', 'max:255'],
                 'records.*.other_names' => ['nullable', 'string', 'max:255'],
                 'records.*.occupation' => ['nullable', 'string', 'max:255'],
-                'records.*.gender' => ['required', 'in:Male,Female'],
-                'records.*.age' => ['required', 'integer', 'between:0,255'],
-                'records.*.serial' => ['required', 'integer', 'min:1'],
+                'records.*.gender' => ['nullable', 'in:Male,Female'],
+                'records.*.age' => ['nullable', 'integer', 'between:0,255'],
+                'records.*.serial' => ['nullable', 'integer', 'min:1'],
+                'records.*.source_key' => ['nullable', 'string', 'max:255'],
                 'records.*.photo' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/i'],
             ])->validate();
             $records = $data['records'];
@@ -67,7 +69,7 @@ class RegisterImporter
                 'registration_area' => $pollingUnit->ward->name, 'polling_unit' => $pollingUnit->name,
             ];
             $rows = [];
-            foreach ($records as $record) {
+            foreach ($records as $position => $record) {
                 $photoPath = null;
                 if ($record['photo'] ?? null) {
                     $photoPath = Storage::disk('local')->putFileAs($photoDirectory, new HttpFile($work.'/'.$record['photo']), $record['photo']);
@@ -76,30 +78,48 @@ class RegisterImporter
                     }
                 }
                 $rows[] = [
-                    'vin' => $record['vin'], 'serial' => $record['serial'], 'full_name' => $record['full_name'],
-                    'surname' => $record['surname'], 'other_names' => $record['other_names'] ?? null,
-                    'occupation' => $record['occupation'] ?? null, 'gender' => $record['gender'], 'age' => $record['age'],
+                    'id' => null,
+                    'register_entry_key' => hash('sha256', $record['source_key'] ?? 'position:'.$position),
+                    'vin' => $record['vin'] ?? null, 'serial' => $record['serial'] ?? null, 'full_name' => $record['full_name'] ?? null,
+                    'surname' => $record['surname'] ?? null, 'other_names' => $record['other_names'] ?? null,
+                    'occupation' => $record['occupation'] ?? null, 'gender' => $record['gender'] ?? null, 'age' => $record['age'] ?? null,
                     'photo_path' => $photoPath, 'state' => $header['state'] ?? null, 'lga' => $header['lga'] ?? null,
                     'registration_area' => $header['registration_area'] ?? null, 'polling_unit' => $header['polling_unit'] ?? null,
                     'polling_unit_id' => $pollingUnit->id, 'created_at' => now(), 'updated_at' => now(),
                 ];
             }
-            usort($rows, fn (array $left, array $right): int => strcmp($left['vin'], $right['vin']));
+            if (count(array_unique(array_column($rows, 'register_entry_key'))) !== count($rows)) {
+                throw new RuntimeException('The PDF contains duplicate record positions.');
+            }
+            usort($rows, fn (array $left, array $right): int => strcmp($left['vin'] ?? '', $right['vin'] ?? ''));
             DB::transaction(function () use ($rows, $pollingUnit, $importId, $photoDirectory, &$oldPhotos): void {
                 PollingUnit::whereKey($pollingUnit->id)->lockForUpdate()->firstOrFail();
                 foreach (array_chunk($rows, 200) as $batch) {
                     Voter::insertOrIgnore($batch);
-                    $existing = Voter::whereIn('vin', array_column($batch, 'vin'))->orderBy('vin')->lockForUpdate()->get();
-                    foreach ($existing as $voter) {
-                        if ($voter->polling_unit_id !== null && (int) $voter->polling_unit_id !== (int) $pollingUnit->id) {
+                    $existing = Voter::where(function (Builder $query) use ($batch, $pollingUnit): void {
+                        $query->whereIn('vin', array_filter(array_column($batch, 'vin')))
+                            ->orWhere(fn (Builder $query): Builder => $query->where('polling_unit_id', $pollingUnit->id)->whereIn('register_entry_key', array_column($batch, 'register_entry_key')));
+                    })->orderBy('id')->lockForUpdate()->get();
+                    foreach ($batch as $index => $row) {
+                        $byVin = $row['vin'] === null ? null : $existing->first(fn (Voter $voter): bool => strcasecmp($voter->vin ?? '', $row['vin']) === 0);
+                        $byEntry = $existing->first(fn (Voter $voter): bool => (int) $voter->polling_unit_id === (int) $pollingUnit->id && $voter->register_entry_key === $row['register_entry_key']);
+                        if ($byEntry && $byVin && $byEntry->id !== $byVin->id) {
+                            throw new RuntimeException('The PDF record position belongs to a different voter. Check the selected register.');
+                        }
+                        $voter = $byVin ?? $byEntry;
+                        if ($voter && $voter->polling_unit_id !== null && (int) $voter->polling_unit_id !== (int) $pollingUnit->id) {
                             throw new RuntimeException('A VIN in this PDF is already assigned to another polling unit. Check the selected unit.');
                         }
-                        if ($voter->photo_path && ! str_starts_with($voter->photo_path, $photoDirectory.'/')) {
+                        if ($voter?->vin && $row['vin'] && strcasecmp($voter->vin, $row['vin']) !== 0) {
+                            throw new RuntimeException('The PDF record position belongs to a different VIN.');
+                        }
+                        $batch[$index]['id'] = $voter?->id;
+                        if ($voter?->photo_path && ! str_starts_with($voter->photo_path, $photoDirectory.'/')) {
                             $oldPhotos[] = $voter->photo_path;
                         }
                     }
-                    Voter::upsert($batch, ['vin'], [
-                        'serial', 'full_name', 'surname', 'other_names', 'occupation', 'gender', 'age',
+                    Voter::upsert($batch, ['id'], [
+                        'vin', 'register_entry_key', 'serial', 'full_name', 'surname', 'other_names', 'occupation', 'gender', 'age',
                         'photo_path', 'state', 'lga', 'registration_area', 'polling_unit', 'polling_unit_id', 'updated_at',
                     ]);
                 }
