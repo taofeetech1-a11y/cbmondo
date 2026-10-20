@@ -99,7 +99,7 @@ async function savePhoto(page, id, file) {
 const data = new Uint8Array(fs.readFileSync(pdfPath));
 const doc = await pdfjs.getDocument({ data, verbosity: 0, useSystemFonts: true }).promise;
 
-const { header, expected, printedYear } = readHeader(await getItems(await doc.getPage(1)));
+const { header, expected, printedYear, delimitationCode } = readHeader(await getItems(await doc.getPage(1)));
 const records = [];
 const problems = [];
 
@@ -167,7 +167,7 @@ if (records.length === 0 && expected !== 0) {
   problems.push('No readable voter records found. The PDF may be scanned or use an unsupported layout. Upload a text-based polling-unit register; scanned PDFs require OCR.');
 }
 
-fs.writeFileSync(path.join(outDir, 'records.json'), JSON.stringify({ header, expected, records }));
+fs.writeFileSync(path.join(outDir, 'records.json'), JSON.stringify({ header, expected, delimitation_code: delimitationCode, records }));
 
 if (problems.length) {
   console.error(problems.join('\n'));

@@ -12,7 +12,7 @@
 <form class="panel voter-import-form" method="POST" action="{{ route('voters.import') }}" enctype="multipart/form-data" id="voter-import-form">
     @csrf
     <fieldset class="voter-step"><legend><span class="voter-step-number">01</span> Choose the polling unit</legend>
-    <p class="voter-help">All voters in this PDF will be linked to the polling unit you select.</p>
+    <p class="voter-help">Match the full delimitation code on the PDF to the polling unit you select. The polling-unit name or address may be different.</p>
     <div class="field">
         <label for="import-lga">LGA</label>
         <select id="import-lga" name="lga" required>
@@ -58,7 +58,7 @@
 </form>
 <aside class="voter-import-aside">
     <section class="panel voter-guide"><span class="eyebrow">BEFORE YOU UPLOAD</span><h2>A quick check</h2>
-        <ol><li><b>Match the location</b><p>Check that the LGA, ward and polling unit match the register you are uploading.</p></li><li><b>Use one PDF per unit</b><p>Each polling unit has its own register. Upload its PDF separately.</p></li><li><b>Review the directory</b><p>After extraction, your imported voter records appear in the voter directory.</p></li></ol>
+        <ol><li><b>Match the delimitation code</b><p>Use the full code, including state, LGA, ward and polling unit. Names and addresses can change; the code identifies the unit.</p></li><li><b>Use one PDF per unit</b><p>Each polling unit has its own register. Upload its PDF separately.</p></li><li><b>Review the directory</b><p>After extraction, your imported voter records appear in the voter directory.</p></li></ol>
     </section>
     <div class="voter-import-note"><b>Already imported this register?</b><p>Reimporting the same polling unit updates its records while preserving collected phone numbers and coordinator credit.</p></div>
 </aside>
@@ -69,8 +69,8 @@
     <p class="voter-help" data-import-refresh-status role="status" aria-live="polite"></p>
     @forelse($imports as $import)
         <article class="import-history-row" data-import-id="{{ $import->id }}" data-import-status="{{ $import->status }}">
-            <div><strong>#{{ $import->id }} · {{ $import->pollingUnit->name }}</strong><p>{{ $import->original_name }} · {{ $import->created_at->format('d M Y, H:i') }}@if(auth()->user()->role === 'super_admin') · {{ $import->user?->name ?? 'Former staff member' }}@endif</p></div>
-            <div class="import-history-result"><span class="voter-status-badge" data-import-label>{{ ucfirst($import->status) }}</span><span data-import-count>{{ $import->voters_count !== null ? number_format($import->voters_count).' voters' : '' }}</span></div>
+            <div><strong>#{{ $import->id }} · {{ $import->pollingUnit->delimitation_code }} · {{ $import->pollingUnit->name }}</strong><p>{{ $import->original_name }} · {{ $import->created_at->format('d M Y, H:i') }}@if(auth()->user()->role === 'super_admin') · {{ $import->user?->name ?? 'Former staff member' }}@endif</p></div>
+            <div class="import-history-result"><span class="voter-status-badge" data-import-label>{{ ucfirst($import->status) }}</span><span data-import-count>{{ $import->voters_count !== null ? number_format($import->voters_count).' voters'.($import->conflicts_count > 0 ? ' · '.number_format($import->conflicts_count).' set aside for review' : '') : '' }}</span></div>
             <p class="field-error" data-import-error>{{ $import->error_message }}</p>
             <form method="POST" action="{{ route('voters.imports.retry', $import) }}" data-import-retry @if($import->status !== 'failed' || !$import->pdf_path) hidden @endif>@csrf<button class="btn btn-outline" type="submit">Retry import</button></form>
         </article>

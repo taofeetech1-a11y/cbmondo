@@ -24,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::define('review-voter-conflicts', fn (User|CoordinatorAgent $user): bool => $user instanceof User && $user->is_active && $user->role === 'super_admin');
+
         foreach (User::PERMISSIONS as $permission) {
             Gate::define($permission, fn (User|CoordinatorAgent $user): bool => $user instanceof User && $user->hasPermission($permission));
         }

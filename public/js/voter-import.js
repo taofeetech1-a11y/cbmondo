@@ -74,7 +74,7 @@ if (importHistory) {
                 if (!row) continue;
                 row.dataset.importStatus = item.status;
                 row.querySelector('[data-import-label]').textContent = item.status.charAt(0).toUpperCase() + item.status.slice(1);
-                row.querySelector('[data-import-count]').textContent = item.voters_count === null ? '' : `${Number(item.voters_count).toLocaleString()} voters`;
+                row.querySelector('[data-import-count]').textContent = item.voters_count === null ? '' : `${Number(item.voters_count).toLocaleString()} voters${Number(item.conflicts_count) > 0 ? ` · ${Number(item.conflicts_count).toLocaleString()} set aside for review` : ''}`;
                 row.querySelector('[data-import-error]').textContent = item.error ?? '';
                 row.querySelector('[data-import-retry]').hidden = !item.can_retry;
             }

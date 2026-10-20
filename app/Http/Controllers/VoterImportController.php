@@ -80,7 +80,7 @@ class VoterImportController extends Controller
     public function importStatus(Request $request): JsonResponse
     {
         $imports = $this->visibleImports($request)->latest('id')->paginate(10)->through(fn (VoterRegisterImport $import): array => [
-            'id' => $import->id, 'status' => $import->status, 'voters_count' => $import->voters_count,
+            'id' => $import->id, 'status' => $import->status, 'voters_count' => $import->voters_count, 'conflicts_count' => $import->conflicts_count,
             'error' => $import->error_message, 'can_retry' => $import->status === 'failed' && $import->pdf_path !== null,
         ]);
 

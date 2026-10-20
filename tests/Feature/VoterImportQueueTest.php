@@ -5,8 +5,10 @@ use App\Models\CoordinatorAgent;
 use App\Models\PollingUnit;
 use App\Models\User;
 use App\Models\Voter;
+use App\Models\VoterImportConflict;
 use App\Models\VoterRegisterImport;
 use App\Services\RegisterImporter;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Artisan;
@@ -28,16 +30,16 @@ function queuedVoterRecord(string $vin = 'AAAA BBBB CCCC DDDD 123'): array
         'other_names' => 'Example', 'occupation' => null, 'gender' => 'Male', 'age' => 30, 'photo' => 'private.jpg'];
 }
 
-function fakeQueuedExtraction(array $records): void
+function fakeQueuedExtraction(array $records, ?string $delimitationCode = null, ?array $header = null): void
 {
-    Process::fake(function (PendingProcess $process) use ($records) {
+    Process::fake(function (PendingProcess $process) use ($records, $delimitationCode, $header) {
         foreach ($records as $record) {
             if ($record['photo'] ?? null) {
                 File::put($process->command[3].'/'.$record['photo'], 'private photo');
             }
         }
         File::put($process->command[3].'/records.json', json_encode([
-            'header' => null, 'expected' => count($records), 'records' => $records,
+            'header' => $header, 'delimitation_code' => $delimitationCode, 'expected' => count($records), 'records' => $records,
         ], JSON_THROW_ON_ERROR));
 
         return Process::result();
@@ -71,6 +73,39 @@ it('bounds queue capacity and removes rejected private uploads', function () {
     expect(Storage::disk('local')->files('register-imports'))->toHaveCount(1);
     Queue::assertPushed(ImportVoterRegister::class, 1);
 });
+
+it('identifies renamed polling units by the full normalized delimitation code', function (string $code) {
+    Storage::fake('local');
+    $unit = PollingUnit::factory()->create(['name' => 'Old polling address', 'delimitation_code' => '28/18/01/003']);
+    $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id]);
+    Storage::disk('local')->put($import->pdf_path, 'pdf');
+    fakeQueuedExtraction([queuedVoterRecord()], $code, [
+        'polling_unit' => 'New relocated address', 'state' => 'ONDO', 'lga' => 'OWO', 'registration_area' => 'EHINOGBE',
+    ]);
+
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+    expect($import->fresh()->status)->toBe('completed');
+    $this->assertDatabaseHas('voters', ['polling_unit_id' => $unit->id, 'polling_unit' => 'New relocated address']);
+    expect($unit->fresh()->name)->toBe('Old polling address');
+    expect($unit->fresh()->delimitation_code)->toBe('28/18/01/003');
+})->with(['28/18/01/003', '28-18-01-003', '28 – 18 – 1 – 3']);
+
+it('rejects another polling units code even when its name or final unit number matches', function (string $code) {
+    Storage::fake('local');
+    $unit = PollingUnit::factory()->create(['name' => 'Shared school name', 'delimitation_code' => '28/18/01/003']);
+    $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id]);
+    Storage::disk('local')->put($import->pdf_path, 'pdf');
+    fakeQueuedExtraction([queuedVoterRecord()], $code, ['polling_unit' => $unit->name]);
+
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+    expect($import->fresh()->status)->toBe('failed');
+    expect($import->fresh()->error_message)->toContain('delimitation code')->toContain('does not match');
+    $this->assertDatabaseCount('voters', 0);
+    expect($unit->fresh()->register_uploaded_at)->toBeNull();
+    expect(Storage::disk('local')->allFiles())->toBe([$import->pdf_path]);
+})->with(['28/18/01/004', '28/17/01/003', '28/18/02/003']);
 
 it('limits one uploaders backlog while allowing other staff to keep uploading', function () {
     Storage::fake('local');
@@ -185,18 +220,42 @@ it('retains failed PDFs for retry without exposing extraction details or partial
     expect($import->fresh()->status)->toBe('completed');
 });
 
-it('does not transfer existing VINs between units or leave partial rows and photos on failure', function () {
+it('sets aside cross-unit VIN conflicts while importing the rest and preserving the existing voter', function () {
     Storage::fake('local');
-    $existing = Voter::factory()->for(PollingUnit::factory(), 'pollingUnit')->create(['phone' => '08012345678']);
+    $collector = CoordinatorAgent::factory()->create();
+    $existing = Voter::factory()->for(PollingUnit::factory(), 'pollingUnit')->create(['phone' => '08012345678', 'photo_path' => 'voters/original.jpg']);
+    $existing->forceFill(['phone_added_by' => $collector->id, 'phone_added_at' => now()])->save();
+    Storage::disk('local')->put($existing->photo_path, 'original photo');
     $import = VoterRegisterImport::factory()->create();
     Storage::disk('local')->put($import->pdf_path, 'pdf');
-    fakeQueuedExtraction([queuedVoterRecord($existing->vin), queuedVoterRecord('ZZZZ BBBB CCCC DDDD 123')]);
+    $incoming = [...queuedVoterRecord($existing->vin), 'full_name' => 'Incoming disputed voter', 'photo' => 'conflict.jpg'];
+    $accepted = [...queuedVoterRecord('ZZZZ BBBB CCCC DDDD 123'), 'photo' => 'accepted.jpg'];
+    fakeQueuedExtraction([$incoming, $accepted]);
     (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
-    expect($import->fresh()->status)->toBe('failed');
-    $this->assertDatabaseCount('voters', 1);
+    expect($import->fresh()->status)->toBe('completed');
+    expect($import->fresh()->voters_count)->toBe(1);
+    expect($import->fresh()->conflicts_count)->toBe(1);
+    $this->assertDatabaseCount('voters', 2);
     expect($existing->fresh()->phone)->toBe('08012345678');
+    expect($existing->fresh()->phone_added_by)->toBe($collector->id);
+    expect($existing->fresh()->phone_added_at)->not->toBeNull();
+    Storage::disk('local')->assertExists('voters/original.jpg');
     expect($existing->fresh()->polling_unit_id)->not->toBe($import->polling_unit_id);
-    expect(Storage::disk('local')->allFiles())->toBe([$import->pdf_path]);
+    $conflict = VoterImportConflict::sole();
+    expect($conflict->existing_voter_id)->toBe($existing->id);
+    expect($conflict->existing_polling_unit_id)->toBe($existing->polling_unit_id);
+    expect($conflict->polling_unit_id)->toBe($import->polling_unit_id);
+    expect($conflict->record['full_name'])->toBe('Incoming disputed voter');
+    expect($conflict->status)->toBe('pending');
+    Storage::disk('local')->assertExists($conflict->photo_path);
+    Storage::disk('local')->assertExists(Voter::where('vin', $accepted['vin'])->sole()->photo_path);
+    Storage::disk('local')->assertMissing($import->pdf_path);
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+    $this->assertDatabaseCount('voter_import_conflicts', 1);
+    $this->actingAs($import->user, 'web')->get(route('voters.imports.status'))
+        ->assertJsonPath('imports.0.voters_count', 1)->assertJsonPath('imports.0.conflicts_count', 1)
+        ->assertDontSee($existing->vin)->assertDontSee($conflict->photo_path);
+    $this->get(route('voters.import.create'))->assertOk()->assertSee('1 set aside for review');
 });
 
 it('imports incomplete voters as null and reimports without losing phone collection credit', function () {
@@ -248,7 +307,7 @@ it('keeps voters without VINs separate across polling units even at the same PDF
     $this->assertDatabaseCount('voters', 2);
 });
 
-it('does not replace a different identified voter occupying the same source position', function () {
+it('sets aside a different identified voter occupying the same source position', function () {
     Storage::fake('local');
     $unit = PollingUnit::factory()->create();
     foreach (['90F5AF7A59466848074', 'INC22000000012524244'] as $index => $vin) {
@@ -258,10 +317,79 @@ it('does not replace a different identified voter occupying the same source posi
 
         (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
 
-        expect($import->fresh()->status)->toBe($index === 0 ? 'completed' : 'failed');
+        expect($import->fresh()->status)->toBe('completed');
+        expect($import->fresh()->voters_count)->toBe($index === 0 ? 1 : 0);
+        expect($import->fresh()->conflicts_count)->toBe($index === 0 ? 0 : 1);
     }
     $this->assertDatabaseCount('voters', 1);
     $this->assertDatabaseHas('voters', ['vin' => '90F5AF7A59466848074']);
+    expect(VoterImportConflict::sole()->reason)->toBe('record_position_conflict');
+});
+
+it('rolls back voter rows and new photos if saving a conflict fails', function () {
+    Storage::fake('local');
+    $existing = Voter::factory()->for(PollingUnit::factory(), 'pollingUnit')->create();
+    $unit = PollingUnit::factory()->create();
+    Storage::disk('local')->put('register-imports/source.pdf', 'pdf');
+    fakeQueuedExtraction([queuedVoterRecord($existing->vin), queuedVoterRecord('ZZZZ BBBB CCCC DDDD 123')]);
+
+    expect(fn () => app(RegisterImporter::class)->import(Storage::disk('local')->path('register-imports/source.pdf'), $unit, 999999999))
+        ->toThrow(QueryException::class);
+
+    $this->assertDatabaseCount('voters', 1);
+    $this->assertDatabaseCount('voter_import_conflicts', 0);
+    expect($unit->fresh()->register_uploaded_at)->toBeNull();
+    expect(Storage::disk('local')->allFiles())->toBe(['register-imports/source.pdf']);
+});
+
+it('keeps conflict photos when a later reimport replaces accepted voter photos from the same PDF', function () {
+    Storage::fake('local');
+    $existing = Voter::factory()->for(PollingUnit::factory(), 'pollingUnit')->create();
+    $unit = PollingUnit::factory()->create();
+    $records = [queuedVoterRecord($existing->vin), queuedVoterRecord('ZZZZ BBBB CCCC DDDD 123')];
+    foreach (range(1, 2) as $attempt) {
+        $import = VoterRegisterImport::factory()->create(['polling_unit_id' => $unit->id]);
+        Storage::disk('local')->put($import->pdf_path, 'pdf');
+        fakeQueuedExtraction($records);
+
+        (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+        expect($import->fresh()->status)->toBe('completed');
+        expect($import->fresh()->conflicts_count)->toBe(1);
+    }
+    $this->assertDatabaseCount('voters', 2);
+    $this->assertDatabaseCount('voter_import_conflicts', 2);
+    foreach (VoterImportConflict::all() as $conflict) {
+        Storage::disk('local')->assertExists($conflict->photo_path);
+    }
+});
+
+it('counts imported and quarantined voters correctly across large PDF batches', function () {
+    Storage::fake('local');
+    $existingUnit = PollingUnit::factory()->create();
+    foreach (['0000000000000000000', 'ZZZZ BBBB CCCC DDDD 123'] as $vin) {
+        Voter::factory()->for($existingUnit, 'pollingUnit')->create(['vin' => $vin]);
+    }
+    $import = VoterRegisterImport::factory()->create();
+    Storage::disk('local')->put($import->pdf_path, 'pdf');
+    $records = [];
+    foreach (range(1, 205) as $number) {
+        $vin = match ($number) {
+            1 => '0000000000000000000',
+            205 => 'ZZZZ BBBB CCCC DDDD 123',
+            default => 'A'.str_pad((string) $number, 18, '0', STR_PAD_LEFT),
+        };
+        $records[] = [...queuedVoterRecord($vin), 'serial' => $number, 'photo' => null];
+    }
+    fakeQueuedExtraction($records);
+
+    (new ImportVoterRegister($import->id))->handle(app(RegisterImporter::class));
+
+    expect($import->fresh()->status)->toBe('completed');
+    expect($import->fresh()->voters_count)->toBe(203);
+    expect($import->fresh()->conflicts_count)->toBe(2);
+    $this->assertDatabaseCount('voters', 205);
+    $this->assertDatabaseCount('voter_import_conflicts', 2);
 });
 
 it('renders incomplete voter names and demographics without inventing personal information', function () {
@@ -325,7 +453,7 @@ it('does not process uploads after the uploader loses import permission', functi
 
 it('imports a supplied sample PDF through the real worker and stores its photos privately', function () {
     Storage::fake('local');
-    $unit = PollingUnit::factory()->create();
+    $unit = PollingUnit::factory()->create(['delimitation_code' => getenv('VOTER_IMPORT_SAMPLE_CODE') ?: '28/18/01/003']);
     $sample = getenv('VOTER_IMPORT_SAMPLE_PDF');
     $data = queuedPdfData($unit);
     $data['pdf'] = new UploadedFile($sample, 'sample.pdf', 'application/pdf', null, true);

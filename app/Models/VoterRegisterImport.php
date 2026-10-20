@@ -16,7 +16,7 @@ class VoterRegisterImport extends Model
 
     protected function casts(): array
     {
-        return ['started_at' => 'datetime', 'finished_at' => 'datetime', 'voters_count' => 'integer', 'attempts' => 'integer'];
+        return ['started_at' => 'datetime', 'finished_at' => 'datetime', 'voters_count' => 'integer', 'conflicts_count' => 'integer', 'attempts' => 'integer'];
     }
 
     public function pollingUnit(): BelongsTo

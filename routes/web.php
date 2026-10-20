@@ -15,6 +15,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaffUserController;
 use App\Http\Controllers\VoterController;
+use App\Http\Controllers\VoterImportConflictController;
 use App\Http\Controllers\VoterImportController;
 use App\Http\Middleware\EnsureAccountAccess;
 use App\Http\Middleware\PrivateDashboard;
@@ -108,6 +109,8 @@ Route::middleware(['auth:web,coordinator', EnsureAccountAccess::class, 'auth.ses
 });
 
 Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::class, 'auth.session', 'can:import-voters'])->group(function () {
+    Route::get('/voters/import-conflicts', [VoterImportConflictController::class, 'index'])->middleware(['can:review-voter-conflicts', ProtectVoterPages::class])->name('voters.conflicts.index');
+    Route::get('/voters/import-conflicts/{conflict}/photo', [VoterImportConflictController::class, 'photo'])->whereNumber('conflict')->middleware(['can:review-voter-conflicts', ProtectVoterPages::class])->name('voters.conflicts.photo');
     Route::get('/voters/import', [VoterImportController::class, 'create'])->name('voters.import.create');
     Route::post('/voters/import', [VoterImportController::class, 'store'])->middleware('throttle:10,1')->name('voters.import');
     Route::get('/voters/imports/status', [VoterImportController::class, 'importStatus'])->name('voters.imports.status');
