@@ -134,7 +134,7 @@ See [TODO.md](TODO.md) for the detailed checklist and completion history.
 
 The `main` branch requires staff sign-in for the dashboard. The pre-authentication version is preserved on `codex/no-authentication`.
 
-Super admins have full access and can create staff accounts, assign roles and deactivate accounts through **Staff accounts**. Admins can view members, manage executive positions, and assign or remove appointments. Admins cannot update member information, export data, download ID cards, import members or manage staff accounts. Restrictions are enforced on server routes as well as in the interface. Public membership registration remains available; public staff-account registration is disabled.
+Super admins have full access and can create staff accounts, assign roles and deactivate accounts through **Staff accounts**. Admins have view-only access to members, voters, appointments and executive positions. They cannot add, update, delete, import or export dashboard data, download ID cards, manage accounts, or change their account details. Password changes remain available for account security. Restrictions are enforced on server routes as well as in the interface. Public membership registration remains available; public staff-account registration is disabled.
 
 When deploying this release, preserve the production `.env` and storage, install the locked dependencies and build assets as usual, then run in the application directory:
 

@@ -30,7 +30,7 @@ test('super admins can create staff accounts and change their access', function 
 test('admins cannot promote themselves through staff or profile endpoints', function () {
     $user = User::factory()->create();
     $this->actingAs($user)->patch(route('staff-users.update', $user), ['role' => 'super_admin', 'is_active' => 1])->assertForbidden();
-    $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'role' => 'super_admin', 'is_active' => true])->assertSessionHasNoErrors();
+    $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'role' => 'super_admin', 'is_active' => true])->assertForbidden();
     $this->assertDatabaseHas('users', ['id' => $user->id, 'role' => 'admin']);
 });
 

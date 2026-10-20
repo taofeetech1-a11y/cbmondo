@@ -52,9 +52,12 @@ Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::cla
     Route::patch('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'update'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.update');
     Route::post('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'store'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.store');
     Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
-    Route::resource('excos', ExcoController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
-    Route::resource('executives', ExecutiveController::class)->only(['index', 'create', 'store', 'destroy'])->middleware('can:manage-appointments');
-    Route::resource('executive-positions', ExecutivePositionController::class)->parameters(['executive-positions' => 'executivePosition'])->only(['index', 'store', 'update', 'destroy'])->middleware('can:manage-positions');
+    Route::resource('excos', ExcoController::class)->only(['index'])->middleware('can:view-appointments');
+    Route::resource('excos', ExcoController::class)->only(['create', 'store', 'destroy'])->middleware('can:manage-appointments');
+    Route::resource('executives', ExecutiveController::class)->only(['index'])->middleware('can:view-appointments');
+    Route::resource('executives', ExecutiveController::class)->only(['create', 'store', 'destroy'])->middleware('can:manage-appointments');
+    Route::resource('executive-positions', ExecutivePositionController::class)->only(['index'])->middleware('can:view-positions');
+    Route::resource('executive-positions', ExecutivePositionController::class)->parameters(['executive-positions' => 'executivePosition'])->only(['store', 'update', 'destroy'])->middleware('can:manage-positions');
     Route::get('/membership/import', [MembershipImportController::class, 'index'])->name('membership.import')->middleware('can:import-members');
     Route::post('/membership/import/preview', [MembershipImportController::class, 'preview'])->name('membership.import.preview')->middleware('can:import-members');
     Route::post('/membership/import/confirm', [MembershipImportController::class, 'store'])->name('membership.import.store')->middleware('can:import-members');
@@ -71,9 +74,9 @@ Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::cla
 
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:5,1')->name('profile.update');
-        Route::get('/profile/email/confirm/{user}', [ProfileController::class, 'confirmEmail'])->middleware(['signed', 'throttle:6,1'])->name('profile.email.confirm');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+        Route::patch('/profile', [ProfileController::class, 'update'])->middleware(['can:update-profile', 'throttle:5,1'])->name('profile.update');
+        Route::get('/profile/email/confirm/{user}', [ProfileController::class, 'confirmEmail'])->middleware(['can:update-profile', 'signed', 'throttle:6,1'])->name('profile.email.confirm');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->middleware('can:update-profile')->name('profile.destroy');
     });
 
     Route::resource('staff-users', StaffUserController::class)->parameters(['staff-users' => 'staffUser'])->only(['index', 'store', 'update'])->middleware('can:manage-users');
@@ -102,7 +105,7 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
 Route::middleware(['auth:web,coordinator', EnsureAccountAccess::class, 'auth.session', 'can:view-voters'])->group(function () {
     Route::get('/voters', [VoterImportController::class, 'index'])->middleware(ProtectVoterPages::class)->name('voters.index');
-    Route::get('/voters/{voter}/photo', [VoterController::class, 'photo'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.photo');
+    Route::get('/voters/{voter}/photo', [VoterController::class, 'photo'])->middleware([ProtectVoterPages::class, 'can:view-voter,voter'])->whereNumber('voter')->name('voters.photo');
     Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.edit');
     Route::patch('/voters/{voter}', [VoterController::class, 'update'])->middleware('can:update-voter,voter')->whereNumber('voter')->name('voters.update');
 });

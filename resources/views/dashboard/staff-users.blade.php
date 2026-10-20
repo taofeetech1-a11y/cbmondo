@@ -2,7 +2,7 @@
 @section('title', 'Staff accounts — CBM Ondo')
 @section('content')
 <div class="member-layout">
-<div class="page-head"><div><span class="eyebrow">ACCESS MANAGEMENT</span><h1>Staff accounts</h1><p>Super admins have full access. Admins can view members, assign and remove appointments, and manage positions.</p></div></div>
+<div class="page-head"><div><span class="eyebrow">ACCESS MANAGEMENT</span><h1>Staff accounts</h1><p>Super admins have full access. Admins can view members, voters, appointments and positions. They cannot add, change, delete, import or export dashboard data.</p></div></div>
 @if(session('status'))<div class="member-notice" role="status">{{ session('status') }}</div>@endif
 @if($errors->any())<div class="member-notice member-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 <form class="panel member-form" method="POST" action="{{ route('staff-users.store') }}">@csrf<h2 class="member-full">Create staff account</h2>

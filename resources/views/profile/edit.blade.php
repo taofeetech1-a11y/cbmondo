@@ -12,7 +12,14 @@
         <div class="account-panels">
             <div class="panel">
                 <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
+                    @can('update-profile')
+                        @include('profile.partials.update-profile-information-form')
+                    @else
+                        <h2>Account details</h2>
+                        <p>Name: {{ $user->name }}</p>
+                        <p>Email: {{ $user->email }}</p>
+                        <p>Your account has view-only access. Ask a super admin to change these details.</p>
+                    @endcan
                 </div>
             </div>
 
@@ -22,11 +29,11 @@
                 </div>
             </div>
 
-            <div class="panel account-danger">
+            @can('update-profile')<div class="panel account-danger">
                 <div class="max-w-xl">
                     @include('profile.partials.delete-user-form')
                 </div>
-            </div>
+            </div>@endcan
         </div>
     </div>
 @endsection

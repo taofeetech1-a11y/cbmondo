@@ -6,7 +6,7 @@
             <h1>Excos Dashboard</h1>
             <p>Manage your executive members across Ondo State.</p>
         </div>
-        <a class="btn btn-primary" href="{{ route('excos.create') }}">+ Add Exco</a>
+        @can('manage-appointments')<a class="btn btn-primary" href="{{ route('excos.create') }}">+ Add Exco</a>@endcan
     </div>
     @if (session('status'))
         <div class="member-notice" role="status">{{ session('status') }}</div>
@@ -101,10 +101,10 @@
                                         href="{{ route('membership.show', ['membership' => $member, 'from' => 'excos', 'filters' => $filters]) }}">View</a>
                                     @can('update-members')<a class="btn btn-outline"
                                         href="{{ route('membership.edit', ['membership' => $member, 'from' => 'excos', 'filters' => $filters]) }}">Edit</a>@endcan
-                                    <form method="POST" action="{{ route('excos.destroy', $member->id) }}"
+                                    @can('manage-appointments')<form method="POST" action="{{ route('excos.destroy', $member->id) }}"
                                         onsubmit="return confirm('Remove this member from Excos? Their membership will be kept.')">
                                         @csrf @method('DELETE')<button class="btn btn-outline" type="submit"
-                                            aria-label="Remove {{ $member->name }} from Excos">Remove</button></form>
+                                            aria-label="Remove {{ $member->name }} from Excos">Remove</button></form>@endcan
                                 </div>
                             </td>
                         </tr>

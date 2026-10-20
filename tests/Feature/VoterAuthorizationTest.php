@@ -22,7 +22,7 @@ function voterCoordinatorForUnit(PollingUnit $unit): CoordinatorAgent
     ]), 'membership')->create();
 }
 
-it('allows only active super admins to browse all voters among staff roles', function (string $role, bool $active, bool $allowed) {
+it('allows active super admins and read-only admins to browse all voters among staff roles', function (string $role, bool $active, bool $allowed) {
     $staff = User::factory()->create(['role' => $role, 'is_active' => $active]);
     expect(Gate::forUser($staff)->allows('view-voters'))->toBe($allowed);
     expect(Gate::forUser($staff)->allows('import-voters'))->toBe($active && in_array($role, ['super_admin', 'it'], true));
@@ -30,9 +30,10 @@ it('allows only active super admins to browse all voters among staff roles', fun
     $response->assertStatus($allowed ? 200 : 403);
 })->with([
     'super admin' => ['super_admin', true, true],
-    'admin' => ['admin', true, false],
+    'admin' => ['admin', true, true],
     'IT' => ['it', true, false],
     'inactive super admin' => ['super_admin', false, false],
+    'inactive admin' => ['admin', false, false],
     'inactive IT' => ['it', false, false],
 ]);
 
@@ -46,6 +47,40 @@ it('shows all units and unlinked voters to a super admin', function () {
         ->get(route('voters.index'))->assertOk()->assertSee('Unlinked voter')
         ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 3)
         ->assertViewHas('totalUnits', 2);
+});
+
+it('lets admins view and filter all voter lists and photos without editing or uploading', function () {
+    Storage::fake('local');
+    Process::fake();
+    $units = PollingUnit::factory()->count(2)->create();
+    $own = Voter::factory()->for($units[0], 'pollingUnit')->create(['full_name' => 'First unit voter', 'photo_path' => 'voters/admin-view.jpg']);
+    Voter::factory()->for($units[1], 'pollingUnit')->create(['full_name' => 'Second unit voter']);
+    Voter::factory()->create(['full_name' => 'Unlinked voter']);
+    Storage::disk('local')->put($own->photo_path, 'private voter photo');
+    $admin = User::factory()->create();
+    $import = VoterRegisterImport::factory()->create(['status' => 'failed']);
+
+    $this->actingAs($admin, 'web')->get(route('voters.index'))->assertOk()
+        ->assertSee('First unit voter')->assertSee('Second unit voter')->assertSee('Unlinked voter')
+        ->assertSee($own->vin)->assertSee(route('voters.photo', $own))
+        ->assertDontSee('Edit voter')->assertDontSee('Import a register')->assertDontSee(route('voters.edit', $own))
+        ->assertDontSee(route('voters.import.create'))
+        ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 3);
+    $this->get(route('voters.index', ['polling_unit_id' => $units[0]->id]))->assertOk()
+        ->assertSee('First unit voter')->assertDontSee('Second unit voter')->assertDontSee('Unlinked voter');
+    $this->get(route('voters.photo', $own))->assertOk()->assertStreamedContent('private voter photo');
+    $this->get(route('voters.edit', $own))->assertNotFound();
+    $this->patch(route('voters.update', $own), ['phone' => '08012345678'])->assertNotFound();
+    $this->get(route('voters.import.create'))->assertForbidden();
+    $this->post(route('voters.import'))->assertForbidden();
+    $this->get(route('voters.imports.status'))->assertForbidden();
+    $this->post(route('voters.imports.retry', $import))->assertForbidden();
+
+    expect($own->fresh()->phone)->toBeNull();
+    expect($import->fresh()->status)->toBe('failed');
+    $this->assertDatabaseCount('voters', 3);
+    $this->assertDatabaseCount('jobs', 0);
+    Process::assertNothingRan();
 });
 
 it('limits coordinator voters counts status cards and location choices to their polling unit', function () {

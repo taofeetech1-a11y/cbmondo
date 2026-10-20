@@ -110,7 +110,7 @@
                 @endunless
                 <div class="voter-location"><dt>Polling unit · PDF register</dt><dd>{{ $voter->polling_unit ?: 'Not recorded' }}</dd></div>
             </dl>
-            <div class="voter-card-actions"><a class="btn btn-outline" href="{{ route('voters.edit', $voter) }}" aria-label="{{ isset($assignedUnit) ? 'Add phone number for' : 'Edit' }} {{ $voterName }}">{{ isset($assignedUnit) ? 'Add phone number →' : 'Edit voter →' }}</a></div>
+            @can('update-voter', $voter)<div class="voter-card-actions"><a class="btn btn-outline" href="{{ route('voters.edit', $voter) }}" aria-label="{{ isset($assignedUnit) ? 'Add phone number for' : 'Edit' }} {{ $voterName }}">{{ isset($assignedUnit) ? 'Add phone number →' : 'Edit voter →' }}</a></div>@endcan
         </article>
     @empty
         <section class="panel voter-empty"><span class="voter-symbol" aria-hidden="true">▤</span><h2>{{ isset($assignedUnit) ? 'No voters awaiting phone numbers' : 'No voters found' }}</h2><p>{{ isset($assignedUnit) ? 'There are no voters awaiting a phone number in this list.' : 'No voter records match your current location and search.' }}</p>@can('import-voters')<a class="btn btn-primary" href="{{ route('voters.import') }}">Import a register</a>@endcan</section>
