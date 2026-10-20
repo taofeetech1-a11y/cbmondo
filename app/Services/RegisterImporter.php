@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\PollingUnit;
 use App\Models\Voter;
+use App\Models\VoterImportConflict;
 use App\Models\VoterRegisterImport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\File as HttpFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
 
@@ -47,6 +50,7 @@ class RegisterImporter
             $data = json_decode(File::get($work.'/records.json'), true, 512, JSON_THROW_ON_ERROR);
             Validator::make($data, [
                 'expected' => ['present', 'nullable', 'integer', 'min:0'],
+                'delimitation_code' => ['nullable', 'string', 'max:30'],
                 'records' => ['present', 'array'],
                 'records.*.vin' => ['nullable', 'string', 'max:255', 'distinct:ignore_case'],
                 'records.*.full_name' => ['nullable', 'string', 'max:255'],
@@ -59,6 +63,14 @@ class RegisterImporter
                 'records.*.source_key' => ['nullable', 'string', 'max:255'],
                 'records.*.photo' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/i'],
             ])->validate();
+            $pdfCode = $this->normalizeDelimitationCode($data['delimitation_code'] ?? null);
+            $selectedCode = $this->normalizeDelimitationCode($pollingUnit->delimitation_code);
+            if (filled($data['delimitation_code'] ?? null) && $pdfCode === null) {
+                throw ValidationException::withMessages(['polling_unit_id' => 'The PDF delimitation code could not be read reliably. Check the code and selected polling unit.']);
+            }
+            if ($pdfCode !== null && $pdfCode !== $selectedCode) {
+                throw ValidationException::withMessages(['polling_unit_id' => 'The PDF delimitation code ('.$pdfCode.') does not match the selected polling unit ('.($selectedCode ?? 'code not recorded').'). Select the polling unit with the matching code; its name may be different.']);
+            }
             $records = $data['records'];
             if ($data['expected'] !== null && count($records) !== $data['expected']) {
                 throw new RuntimeException('The extracted voter count does not match the PDF total.');
@@ -92,9 +104,12 @@ class RegisterImporter
                 throw new RuntimeException('The PDF contains duplicate record positions.');
             }
             usort($rows, fn (array $left, array $right): int => strcmp($left['vin'] ?? '', $right['vin'] ?? ''));
-            DB::transaction(function () use ($rows, $pollingUnit, $importId, $photoDirectory, &$oldPhotos): void {
+            $importedCount = DB::transaction(function () use ($rows, $pollingUnit, $importId, $photoDirectory, &$oldPhotos): int {
+                $importedCount = 0;
+                $conflictsCount = 0;
                 PollingUnit::whereKey($pollingUnit->id)->lockForUpdate()->firstOrFail();
                 foreach (array_chunk($rows, 200) as $batch) {
+                    $conflicts = [];
                     Voter::insertOrIgnore($batch);
                     $existing = Voter::where(function (Builder $query) use ($batch, $pollingUnit): void {
                         $query->whereIn('vin', array_filter(array_column($batch, 'vin')))
@@ -103,40 +118,61 @@ class RegisterImporter
                     foreach ($batch as $index => $row) {
                         $byVin = $row['vin'] === null ? null : $existing->first(fn (Voter $voter): bool => strcasecmp($voter->vin ?? '', $row['vin']) === 0);
                         $byEntry = $existing->first(fn (Voter $voter): bool => (int) $voter->polling_unit_id === (int) $pollingUnit->id && $voter->register_entry_key === $row['register_entry_key']);
-                        if ($byEntry && $byVin && $byEntry->id !== $byVin->id) {
-                            throw new RuntimeException('The PDF record position belongs to a different voter. Check the selected register.');
-                        }
                         $voter = $byVin ?? $byEntry;
-                        if ($voter && $voter->polling_unit_id !== null && (int) $voter->polling_unit_id !== (int) $pollingUnit->id) {
-                            throw new RuntimeException('A VIN in this PDF is already assigned to another polling unit. Check the selected unit.');
+                        $reason = null;
+                        if ($byVin && $byVin->polling_unit_id !== null && (int) $byVin->polling_unit_id !== (int) $pollingUnit->id) {
+                            $reason = 'vin_in_another_unit';
+                        } elseif (($byEntry && $byVin && $byEntry->id !== $byVin->id)
+                            || ($voter?->vin && $row['vin'] && strcasecmp($voter->vin, $row['vin']) !== 0)) {
+                            $reason = 'record_position_conflict';
                         }
-                        if ($voter?->vin && $row['vin'] && strcasecmp($voter->vin, $row['vin']) !== 0) {
-                            throw new RuntimeException('The PDF record position belongs to a different VIN.');
+                        if ($reason !== null) {
+                            $conflictingVoter = $reason === 'record_position_conflict' ? ($byEntry ?? $voter) : $voter;
+                            $conflicts[] = [
+                                'voter_register_import_id' => $importId, 'polling_unit_id' => $pollingUnit->id,
+                                'existing_voter_id' => $conflictingVoter->id, 'existing_polling_unit_id' => $conflictingVoter->polling_unit_id,
+                                'record_key' => $row['register_entry_key'], 'vin' => $row['vin'], 'reason' => $reason,
+                                'record' => json_encode(Arr::except($row, ['id', 'created_at', 'updated_at', 'photo_path']), JSON_THROW_ON_ERROR),
+                                'photo_path' => $row['photo_path'], 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+                            ];
+                            unset($batch[$index]);
+
+                            continue;
                         }
                         $batch[$index]['id'] = $voter?->id;
                         if ($voter?->photo_path && ! str_starts_with($voter->photo_path, $photoDirectory.'/')) {
                             $oldPhotos[] = $voter->photo_path;
                         }
                     }
-                    Voter::upsert($batch, ['id'], [
-                        'vin', 'register_entry_key', 'serial', 'full_name', 'surname', 'other_names', 'occupation', 'gender', 'age',
-                        'photo_path', 'state', 'lga', 'registration_area', 'polling_unit', 'polling_unit_id', 'updated_at',
-                    ]);
+                    if ($conflicts !== []) {
+                        VoterImportConflict::insert($conflicts);
+                        $conflictsCount += count($conflicts);
+                    }
+                    $importedCount += count($batch);
+                    if ($batch !== []) {
+                        Voter::upsert(array_values($batch), ['id'], [
+                            'vin', 'register_entry_key', 'serial', 'full_name', 'surname', 'other_names', 'occupation', 'gender', 'age',
+                            'photo_path', 'state', 'lga', 'registration_area', 'polling_unit', 'polling_unit_id', 'updated_at',
+                        ]);
+                    }
                 }
                 $pollingUnit->forceFill(['register_uploaded_at' => now()])->save();
                 if ($importId !== null) {
                     VoterRegisterImport::whereKey($importId)->update([
-                        'status' => 'completed', 'voters_count' => count($rows), 'finished_at' => now(),
+                        'status' => 'completed', 'voters_count' => $importedCount, 'conflicts_count' => $conflictsCount, 'finished_at' => now(),
                     ]);
                 }
+
+                return $importedCount;
             }, 3);
             $committed = true;
             foreach (array_chunk(array_values(array_unique($oldPhotos)), 200) as $paths) {
                 $referenced = Voter::whereIn('photo_path', $paths)->pluck('photo_path')->all();
+                $referenced = array_merge($referenced, VoterImportConflict::whereIn('photo_path', $paths)->pluck('photo_path')->all());
                 Storage::disk('local')->delete(array_values(array_filter(array_diff($paths, $referenced), fn (string $path): bool => str_starts_with($path, 'voters/'))));
             }
 
-            return count($rows);
+            return $importedCount;
         } catch (Throwable $exception) {
             if (! $committed) {
                 Storage::disk('local')->deleteDirectory($photoDirectory);
@@ -145,5 +181,14 @@ class RegisterImporter
         } finally {
             File::deleteDirectory($work);
         }
+    }
+
+    private function normalizeDelimitationCode(?string $code): ?string
+    {
+        if ($code === null || ! preg_match('/\A\s*(\d{1,2})\s*[-\/–—]\s*(\d{1,2})\s*[-\/–—]\s*(\d{1,2})\s*[-\/–—]\s*(\d{1,3})\s*\z/u', $code, $parts)) {
+            return null;
+        }
+
+        return sprintf('%02d/%02d/%02d/%03d', (int) $parts[1], (int) $parts[2], (int) $parts[3], (int) $parts[4]);
     }
 }

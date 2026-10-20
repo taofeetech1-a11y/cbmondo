@@ -1,3 +1,28 @@
+function normalizeCode(parts) {
+  if (parts.length !== 4 || !parts.every((part, index) => new RegExp(`^\\d{1,${index === 3 ? 3 : 2}}$`).test(part))) return null;
+  return parts.map((part, index) => part.padStart(index === 3 ? 3 : 2, '0')).join('/');
+}
+
+function fullCode(text) {
+  const match = text.match(/\b(\d{1,2})\s*[-/–—]\s*(\d{1,2})\s*[-/–—]\s*(\d{1,2})\s*[-/–—]\s*(\d{1,3})\b/);
+  return match ? normalizeCode(match.slice(1)) : null;
+}
+
+function headerCode(items, locations) {
+  const delim = items.find(item => /^(?:Delim(?:itation)?(?:\s+Code)?|PU\s+Code|Polling\s+Unit\s+Code)\s*:?/i.test(item.str));
+  if (delim) {
+    const line = items.filter(item => Math.abs(item.y - delim.y) < 3 && item.x >= delim.x)
+      .sort((a, b) => a.x - b.x).map(item => item.str).join(' ');
+    const code = fullCode(line);
+    if (code) return code;
+  }
+  for (const item of items) {
+    const code = fullCode(item.str);
+    if (code) return code;
+  }
+  return normalizeCode(locations.map(location => location?.match(/^\s*(\d{1,3})\s*[-–—]\s*\S/)?.[1] ?? ''));
+}
+
 export function readHeader(items) {
   const coded = items
     .filter((item) => /^\d{2,3}\s*[-–—]\s*\S/.test(item.str))
@@ -24,12 +49,13 @@ export function readHeader(items) {
     return {
       header: { state: stateName, lga: lgaName, registration_area: areaName, polling_unit: puName },
       expected,
+      delimitationCode: headerCode(items, [stateName, lgaName, areaName, puName]),
       printedYear: year ? Number(year) : null,
     };
   }
 
   if (coded.length < 4) {
-    return { header: null, expected };
+    return { header: null, expected, delimitationCode: headerCode(items, []) };
   }
 
   const [state, lga, area, pu] = coded;
@@ -45,5 +71,6 @@ export function readHeader(items) {
       polling_unit: [pu.str, second?.str].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(),
     },
     expected,
+    delimitationCode: headerCode(items, [state.str, lga.str, area.str, pu.str]),
   };
 }

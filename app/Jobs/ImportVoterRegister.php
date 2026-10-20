@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ImportVoterRegister implements ShouldQueue
@@ -101,7 +102,9 @@ class ImportVoterRegister implements ShouldQueue
     {
         VoterRegisterImport::whereKey($this->importId)->where('status', '!=', 'completed')->update([
             'status' => 'failed', 'finished_at' => now(),
-            'error_message' => 'Import could not finish. Check the PDF and selected unit, then retry or upload a corrected file. Contact IT support with this import ID if it continues.',
+            'error_message' => $exception instanceof ValidationException && isset($exception->errors()['polling_unit_id'][0])
+                ? $exception->errors()['polling_unit_id'][0]
+                : 'Import could not finish. Check the PDF and selected unit, then retry or upload a corrected file. Contact IT support with this import ID if it continues.',
         ]);
         Log::error('Voter import failed', ['import_id' => $this->importId, 'exception' => $exception]);
     }
