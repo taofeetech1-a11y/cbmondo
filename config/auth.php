@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CoordinatorAgent;
+use App\Models\MemberAccount;
 use App\Models\User;
 
 return [
@@ -39,6 +40,7 @@ return [
     */
 
     'guards' => [
+        'member' => ['driver' => 'session', 'provider' => 'member_accounts'],
         'coordinator' => ['driver' => 'session', 'provider' => 'coordinator_agents'],
         'web' => [
             'driver' => 'session',
@@ -64,6 +66,7 @@ return [
     */
 
     'providers' => [
+        'member_accounts' => ['driver' => 'eloquent', 'model' => MemberAccount::class],
         'coordinator_agents' => ['driver' => 'eloquent', 'model' => CoordinatorAgent::class],
         'users' => [
             'driver' => 'eloquent',

@@ -9,6 +9,9 @@ use App\Http\Controllers\ExcoController;
 use App\Http\Controllers\ExecutiveController;
 use App\Http\Controllers\ExecutivePositionController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MemberActivationController;
+use App\Http\Controllers\MemberProfileController;
+use App\Http\Controllers\MemberSessionController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\MembershipImportController;
 use App\Http\Controllers\ProfileController;
@@ -53,6 +56,7 @@ Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::cla
     Route::patch('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'update'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.update');
     Route::post('/membership/{membership}/coordinator-agent', [CoordinatorAgentController::class, 'store'])->whereNumber('membership')->middleware('can:manage-users')->name('coordinator-agents.store');
     Route::get('/membership', [MembershipController::class, 'index'])->name('membership.index');
+    Route::get('/membership/duplicate-flags', [MemberActivationController::class, 'flags'])->middleware('can:manage-users')->name('membership.duplicate-flags');
     Route::resource('excos', ExcoController::class)->only(['index'])->middleware('can:view-appointments');
     Route::resource('excos', ExcoController::class)->only(['create', 'store', 'destroy'])->middleware('can:manage-appointments');
     Route::resource('executives', ExecutiveController::class)->only(['index'])->middleware('can:view-appointments');
@@ -84,6 +88,25 @@ Route::middleware([PrivateDashboard::class, 'auth:web', EnsureAccountAccess::cla
 });
 
 require __DIR__.'/auth.php';
+
+Route::prefix('member')->name('member.')->middleware(PrivateDashboard::class)->group(function () {
+    Route::middleware('guest:member')->group(function () {
+        Route::get('/login', [MemberSessionController::class, 'create'])->name('login');
+        Route::post('/login', [MemberSessionController::class, 'store'])->middleware('throttle:30,1');
+        Route::get('/activate', [MemberActivationController::class, 'create'])->name('activate');
+        Route::middleware('throttle:10,1')->group(function () {
+            Route::post('/activate/phone', [MemberActivationController::class, 'lookup'])->name('activate.phone');
+            Route::post('/activate/restart', [MemberActivationController::class, 'restart'])->name('activate.restart');
+            Route::post('/activate/name', [MemberActivationController::class, 'confirmName'])->name('activate.name');
+            Route::post('/activate/choose', [MemberActivationController::class, 'choose'])->name('activate.choose');
+            Route::post('/activate/password', [MemberActivationController::class, 'store'])->name('activate.password');
+        });
+    });
+    Route::middleware(['auth:member', 'auth.session'])->group(function () {
+        Route::get('/profile', [MemberProfileController::class, 'show'])->name('profile');
+        Route::post('/logout', [MemberSessionController::class, 'destroy'])->name('logout');
+    });
+});
 
 Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard::class)->group(function () {
     Route::middleware('guest:coordinator')->group(function () {

@@ -40,6 +40,7 @@
                     <a href="{{ route('updates.page') }}">Updates</a>
                     <a href="{{ route('support.page') }}">Support</a>
                     <a href="#reg">Register</a>
+                    <a href="{{ route('member.login') }}">Member sign in</a>
                 </div>
 
                 <div class="nav-secondary">
@@ -566,7 +567,7 @@
 
                 </div>
 
-                <button type="button" 
+                <button type="button"
                     style="border: 1px solid red; border-radius: 5px; background-color: transparent; cursor: pointer; background: #c0182c; padding: 8px; font-weight: 700; color: #e3e7f0;">
                     Download ID Card
                 </button>

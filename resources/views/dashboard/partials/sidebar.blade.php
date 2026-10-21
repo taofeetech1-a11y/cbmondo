@@ -82,6 +82,7 @@
             </button>
         </form> --}}
         <div class="nav-label">WORKSPACE</div>
+        @can('manage-users')<a class="nav-item" href="{{ route('membership.duplicate-flags') }}"><span class="nav-symbol" aria-hidden="true">♙</span>Possible duplicate members</a>@endcan
         @can('view-voters')<a class="nav-item {{ request()->routeIs('voters.index', 'voters.edit') ? 'active' : '' }}" href="{{ route('voters.index') }}" @if(request()->routeIs('voters.index', 'voters.edit')) aria-current="page" @endif><span class="nav-symbol" aria-hidden="true">▤</span>Voter directory</a>@endcan
         @can('import-voters')<a class="nav-item" href="{{ route('voters.import.create') }}"><span class="nav-symbol" aria-hidden="true">↥</span>Import voter registers</a>@endcan
         @can('manage-users')<a class="nav-item {{ request()->routeIs('staff-users.*') ? 'active' : '' }}" href="{{ route('staff-users.index') }}" @if(request()->routeIs('staff-users.*')) aria-current="page" @endif><span class="nav-symbol" aria-hidden="true">♙</span>Staff accounts</a>@endcan
