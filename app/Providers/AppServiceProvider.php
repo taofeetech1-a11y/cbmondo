@@ -37,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-voter', function (User|CoordinatorAgent $user, Voter $voter): Response {
             $allowed = $user instanceof User
                 ? $user->hasPermission('view-voters')
-                : $user->is_active && (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id && blank($voter->phone);
+                : $user->is_active && (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id;
 
             return $allowed ? Response::allow() : Response::denyAsNotFound();
         });
@@ -46,6 +46,14 @@ class AppServiceProvider extends ServiceProvider
             $allowed = $user instanceof User
                 ? $user->is_active && $user->role === 'super_admin'
                 : $user->is_active && (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id && blank($voter->phone);
+
+            return $allowed ? Response::allow() : Response::denyAsNotFound();
+        });
+
+        Gate::define('open-voter', function (User|CoordinatorAgent $user, Voter $voter): Response {
+            $allowed = $user instanceof User
+                ? $user->is_active && $user->role === 'super_admin'
+                : $user->is_active && (int) $user->membership?->pu > 0 && (string) $user->membership->pu === (string) $voter->polling_unit_id;
 
             return $allowed ? Response::allow() : Response::denyAsNotFound();
         });

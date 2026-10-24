@@ -18,6 +18,9 @@ class Voter extends Model
         'other_names',
         'occupation',
         'phone',
+        'spoken_to',
+        'apc_member',
+        'consent_given',
         'gender',
         'age',
         'photo_path',
@@ -40,6 +43,6 @@ class Voter extends Model
 
     protected function casts(): array
     {
-        return ['phone_added_at' => 'datetime'];
+        return ['phone_added_at' => 'datetime', 'spoken_to' => 'boolean', 'apc_member' => 'boolean', 'consent_given' => 'boolean'];
     }
 }

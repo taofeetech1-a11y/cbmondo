@@ -22,6 +22,12 @@ class VoterController extends Controller
 
     public function edit(Voter $voter): View
     {
+        if (auth()->user() instanceof CoordinatorAgent) {
+            $voter->load('pollingUnit.ward');
+
+            return view('coordinator.capture', ['voter' => $voter, 'readOnly' => filled($voter->phone)]);
+        }
+
         return view('voters.edit', compact('voter'));
     }
 
@@ -29,6 +35,7 @@ class VoterController extends Controller
     {
         if ($request->user() instanceof CoordinatorAgent) {
             $updated = Voter::whereKey($voter->id)
+                ->where('polling_unit_id', $request->user()->membership->pu)
                 ->where('phone_added_by', $voter->phone_added_by)
                 ->where(fn (Builder $query) => $query->whereNull('phone')->orWhere('phone', ''))
                 ->update([
@@ -38,7 +45,7 @@ class VoterController extends Controller
                 ]);
             abort_unless($updated === 1, 404);
 
-            return redirect()->route('coordinator.dashboard')->with('status', 'Phone number added. This voter is now complete.');
+            return redirect()->route('coordinator.register')->with('status', 'Phone number saved. This voter is now read-only.');
         }
 
         $voter->update($request->validated());

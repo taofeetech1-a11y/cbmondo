@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Support\ExecutiveAppointments;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,6 +13,12 @@ use Illuminate\Support\Str;
 class Membership extends Model
 {
     protected $guarded = [];
+
+    #[Scope]
+    protected function inWard(Builder $query, Ward $ward): Builder
+    {
+        return $query->where('ward', (string) $ward->id)->where('lga', (string) $ward->lga_id);
+    }
 
     public function memberAccount(): HasOne
     {

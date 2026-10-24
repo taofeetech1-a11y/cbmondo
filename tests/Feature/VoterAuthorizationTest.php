@@ -94,15 +94,13 @@ it('limits coordinator voters counts status cards and location choices to their 
     $this->actingAs($agent, 'coordinator')->get(route('voters.index'))->assertOk()
         ->assertSee('Own voter')->assertDontSee('Outside voter')->assertDontSee('Unlinked voter')
         ->assertDontSee('Import a register')->assertDontSee('Import register')
-        ->assertViewHas('totalUnits', 1)->assertViewHas('uploadedUnits', 1)
-        ->assertViewHas('unitStatuses', fn ($units): bool => $units->total() === 1 && $units->first()->id === $unit->id)
-        ->assertViewHas('lgas', fn ($lgas): bool => $lgas->count() === 1 && $lgas->first()->id === $unit->ward->lga_id);
+        ->assertViewHas('unit', fn ($assigned): bool => $assigned->id === $unit->id);
 
-    foreach ([['polling_unit_id' => $other->id], ['lga' => $other->ward->lga_id], ['q' => 'Outside']] as $filters) {
+    foreach ([['polling_unit_id' => $other->id], ['lga' => $other->ward->lga_id]] as $filters) {
         $this->get(route('voters.index', $filters))->assertOk()->assertDontSee('Outside voter')
-            ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 0);
+            ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 1);
     }
-    $this->get(route('coordinator.register'))->assertRedirect(route('coordinator.dashboard'));
+    $this->get(route('coordinator.register', ['q' => 'Outside']))->assertOk()->assertViewHas('voters', fn ($voters): bool => $voters->total() === 0);
 });
 
 it('allows coordinators to update only phone numbers in their own polling unit', function () {
@@ -122,7 +120,7 @@ it('allows coordinators to update only phone numbers in their own polling unit',
     expect($unlinked->fresh()->phone)->toBeNull();
 });
 
-it('limits coordinator collection to incomplete voters and never renders private voter details', function () {
+it('shows unit voter details while keeping completed records read-only', function () {
     $unit = PollingUnit::factory()->create();
     $pending = Voter::factory()->for($unit, 'pollingUnit')->create([
         'full_name' => 'Needs a number', 'occupation' => 'Private occupation', 'phone' => null,
@@ -132,16 +130,12 @@ it('limits coordinator collection to incomplete voters and never renders private
     ]);
     $this->actingAs(voterCoordinatorForUnit($unit), 'coordinator');
 
-    foreach (['coordinator.dashboard', 'voters.index'] as $route) {
-        $this->get(route($route))->assertOk()->assertSee('Needs a number')->assertDontSee('Already completed')
-            ->assertViewHas('phoneProgress', ['added' => 1, 'missing' => 1, 'percent' => 50])
-            ->assertDontSee($pending->vin)->assertDontSee('Private occupation')
-            ->assertDontSee('Voter identification number')->assertDontSee('years')
-            ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 1);
+    foreach (['coordinator.register', 'voters.index'] as $route) {
+        $this->get(route($route))->assertOk()->assertSee('Needs a number')->assertSee('Already completed')
+            ->assertSee($pending->vin)->assertViewHas('voters', fn ($voters): bool => $voters->total() === 2);
     }
     $this->get(route('voters.edit', $pending))->assertOk()->assertSee('Needs a number')
-        ->assertDontSee($pending->vin)->assertDontSee('Private occupation')
-        ->assertDontSee('voter-age')->assertDontSee('voter-gender')
+        ->assertSee($pending->vin)->assertSee('Private occupation')
         ->assertDontSee('id="voter-full_name"', false)
         ->assertDontSee('id="voter-vin"', false)->assertDontSee('id="voter-occupation"', false)
         ->assertSee('id="voter-phone"', false);
@@ -149,13 +143,11 @@ it('limits coordinator collection to incomplete voters and never renders private
         ->assertSessionHasErrors('phone');
     expect($pending->fresh()->phone)->toBeNull();
     $this->patch(route('voters.update', $pending), ['phone' => '08099999999'])
-        ->assertSessionHasNoErrors()->assertRedirect(route('coordinator.dashboard'));
-    $this->get(route('coordinator.dashboard'))->assertOk()->assertDontSee('Needs a number')
-        ->assertViewHas('phoneProgress', ['added' => 2, 'missing' => 0, 'percent' => 100])
-        ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 0);
+        ->assertSessionHasNoErrors()->assertRedirect(route('coordinator.register'));
+    $this->get(route('coordinator.register'))->assertOk()->assertSee('Needs a number')
+        ->assertViewHas('voters', fn ($voters): bool => $voters->total() === 2);
     foreach ([$pending, $complete] as $voter) {
-        $this->get(route('voters.edit', $voter))->assertNotFound();
-        $this->get(route('voters.photo', $voter))->assertNotFound();
+        $this->get(route('voters.edit', $voter))->assertOk()->assertSee('This record is read-only')->assertDontSee('name="phone"', false);
         $this->patch(route('voters.update', $voter), ['phone' => '08011111111'])->assertNotFound();
     }
     expect($pending->fresh()->phone)->toBe('08099999999');

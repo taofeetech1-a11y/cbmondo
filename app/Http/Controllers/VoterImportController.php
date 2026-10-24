@@ -135,6 +135,10 @@ class VoterImportController extends Controller
 
     public function index(Request $request): View
     {
+        if ($request->user() instanceof CoordinatorAgent) {
+            return app(CoordinatorDashboardController::class)->register($request);
+        }
+
         $filters = $request->validate([
             'lga' => ['nullable', 'integer', 'exists:lgas,id'],
             'ward' => ['nullable', 'integer', Rule::exists('wards', 'id')->when($request->filled('lga'), fn (Exists $rule): Exists => $rule->where('lga_id', $request->input('lga')))],

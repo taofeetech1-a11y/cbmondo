@@ -114,8 +114,10 @@ Route::prefix('coordinator')->name('coordinator.')->middleware(PrivateDashboard:
         Route::post('/login', [CoordinatorSessionController::class, 'store'])->middleware('throttle:30,1');
     });
     Route::middleware(['auth:coordinator', EnsureAccountAccess::class, 'auth.session'])->group(function () {
-        Route::get('/dashboard', [VoterImportController::class, 'index'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('dashboard');
-        Route::get('/register', [CoordinatorDashboardController::class, 'register'])->name('register');
+        Route::get('/dashboard', [CoordinatorDashboardController::class, 'index'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('dashboard');
+        Route::get('/register', [CoordinatorDashboardController::class, 'register'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('register');
+        Route::get('/contributions', [CoordinatorDashboardController::class, 'contributions'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('contributions');
+        Route::get('/memberships', [CoordinatorDashboardController::class, 'memberships'])->middleware(['can:view-voters', ProtectVoterPages::class])->name('memberships');
         Route::get('/profile', [CoordinatorProfileController::class, 'edit'])->name('profile');
         Route::put('/password', [CoordinatorProfileController::class, 'password'])->middleware('throttle:5,1')->name('password');
         Route::post('/photo', [CoordinatorProfileController::class, 'updatePhoto'])->name('photo.update');
@@ -130,7 +132,7 @@ Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::middleware(['auth:web,coordinator', EnsureAccountAccess::class, 'auth.session', 'can:view-voters'])->group(function () {
     Route::get('/voters', [VoterImportController::class, 'index'])->middleware(ProtectVoterPages::class)->name('voters.index');
     Route::get('/voters/{voter}/photo', [VoterController::class, 'photo'])->middleware([ProtectVoterPages::class, 'can:view-voter,voter'])->whereNumber('voter')->name('voters.photo');
-    Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware([ProtectVoterPages::class, 'can:update-voter,voter'])->whereNumber('voter')->name('voters.edit');
+    Route::get('/voters/{voter}/edit', [VoterController::class, 'edit'])->middleware([ProtectVoterPages::class, 'can:open-voter,voter'])->whereNumber('voter')->name('voters.edit');
     Route::patch('/voters/{voter}', [VoterController::class, 'update'])->middleware('can:update-voter,voter')->whereNumber('voter')->name('voters.update');
 });
 

@@ -9,6 +9,24 @@ use Illuminate\Http\Request;
 
 class MembershipDates
 {
+    /**
+     * @param  Builder<Membership>  $query
+     * @return array{labels: list<string>, counts: list<int>, interval: string}
+     */
+    public static function dailyTrend(Builder $query, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        $days = (clone $query)->where('created_at', '>=', $start)->where('created_at', '<', $end)
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')->groupByRaw('DATE(created_at)')->pluck('total', 'day');
+        $labels = [];
+        $counts = [];
+        for ($cursor = $start; $cursor < $end; $cursor = $cursor->addDay()) {
+            $labels[] = $cursor->toDateString();
+            $counts[] = (int) ($days[$cursor->toDateString()] ?? 0);
+        }
+
+        return ['labels' => $labels, 'counts' => $counts, 'interval' => 'daily'];
+    }
+
     /** @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable} */
     public static function range(Request $request): array
     {

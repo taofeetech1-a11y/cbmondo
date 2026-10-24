@@ -1,24 +1,26 @@
-@extends('coordinator.layout')
-@section('title', 'My polling unit — CBM Ondo')
+@extends('coordinator.canvass-layout')
+@section('title', 'Dashboard — CBM Ondo')
+@section('screen-title', 'Dashboard')
 @section('content')
-<div class="page-head"><div><span class="eyebrow">YOUR UNIT, AT A GLANCE</span><h1>Welcome, {{ $member->name }}</h1><p>Your polling unit workspace.</p></div></div>
-@if (! $agent->password_changed_at)
-    <div class="member-notice">Secure your account by changing the default password. <a href="{{ route('coordinator.profile') }}">Go to my profile →</a></div>
-@endif
-<section class="coordinator-unit">
-    <span class="eyebrow">{{ $member->lgaInfo?->name ?? 'LGA not recorded' }} / {{ $member->wardInfo?->name ?? 'Ward not recorded' }}</span>
-    <h2>{{ $member->puInfo?->name ?? 'Polling unit not assigned' }}</h2>
-    <p>{{ $member->puInfo ? 'Your workspace follows the polling unit on your membership.' : 'Ask a staff administrator to complete your membership location.' }}</p>
-    <span class="coordinator-status">Register not connected yet</span>
-</section>
-<div class="coordinator-metrics" aria-label="Register statistics">
-    @foreach (['Total voters', 'Numbers collected', 'Numbers missing', 'Contact permission: Yes'] as $label)
-        <section class="coordinator-metric"><h2>{{ $label }}</h2><strong aria-label="Not available">—</strong><span>Awaiting voter register</span></section>
+@include('coordinator.unit-strip', ['total' => $stats['total']])
+<p class="canvass-welcome">Welcome, {{ auth()->user()->membership->name }}. Here’s your unit’s progress.</p>
+<section class="canvass-metrics" aria-label="Unit collection and consent statistics">
+    @foreach([
+        ['Collected', 'collected', 'phone', 'green', ['collection' => 'collected']],
+        ['Not Yet Collected', 'pending', 'users', 'red', ['collection' => 'pending']],
+        ['Consented', 'consented', 'check', 'green', ['consent' => 'given']],
+        ['Not Consented', 'not_consented', 'ban', 'red', ['consent' => 'declined']],
+    ] as [$label, $key, $icon, $tone, $filter])
+        <a class="canvass-metric canvass-metric-{{ $tone }}" href="{{ route('coordinator.register', $filter) }}"><span class="canvass-metric-icon"><x-canvass-icon :name="$icon"/></span><h2>{{ $label }}</h2><strong>{{ number_format($stats[$key]) }}</strong><span class="canvass-metric-hint">View voters <span aria-hidden="true">↗</span></span></a>
     @endforeach
-</div>
-<div class="coordinator-panels">
-    <section class="panel"><span class="eyebrow">VOTER REGISTER</span><h2>Your unit’s contact records</h2><p>View imported voters and collect phone numbers for your assigned polling unit.</p><a class="btn btn-primary" href="{{ route('coordinator.register') }}">Open voter register →</a></section>
-    <section class="panel"><span class="eyebrow">YOUR ACCOUNT</span><h2>Make your profile yours</h2><p>Upload a photo or take a selfie, check your membership location, and change your password.</p><a class="btn btn-outline" href="{{ route('coordinator.profile') }}">Manage my profile →</a></section>
-</div>
-<section class="panel"><h2>Recent activity</h2><p>No register activity is available yet.</p></section>
+</section>
+<p class="canvass-footnote">Consent not recorded: <a href="{{ route('coordinator.register', ['consent' => 'unknown']) }}">{{ number_format($stats['consent_unknown']) }} voters</a>. Unrecorded consent is excluded from both consent cards.</p>
+<section class="canvass-mini-stats" aria-label="Conversations and membership"><div><span>Spoken to</span><strong>{{ number_format($stats['spoken_to']) }}</strong></div><div><span>APC members confirmed</span><strong>{{ number_format($stats['apc_members']) }}</strong></div></section>
+<a class="canvass-primary" href="{{ route('coordinator.register') }}">Open polling unit register <x-canvass-icon name="arrow"/></a>
+<section class="canvass-ward-overview" aria-label="Ward membership registrations">
+    <div class="canvass-section-heading"><div><span>YOUR WARD · MEMBERSHIP</span><h2>{{ $unit->ward->name }}</h2></div><strong>{{ number_format($wardMemberTotal) }} <small>members</small></strong></div>
+    <p>Membership registrations across all polling units in your ward.</p>
+    <x-registration-trend :trend="$membershipTrend"/>
+    <a class="canvass-text-link" href="{{ route('coordinator.memberships') }}">View ward members and phone numbers →</a>
+</section>
 @endsection
